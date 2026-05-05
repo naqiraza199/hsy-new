@@ -1,0 +1,14 @@
+# ignore all json files
+*.json
+
+# BUT keep important ones
+!package.json
+!package-lock.json
+
+# ignore node_modules
+node_modules/
+
+# ignore build output
+dist/
+build/
+*.zip
