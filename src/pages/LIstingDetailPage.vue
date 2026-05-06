@@ -1236,7 +1236,13 @@ engines() { return this.listing?.metadata?.engines || null; },
          },
         generateSlug(listing) {
             if (!listing) return '';
-            return `${listing.year}-${listing.manufacturer}-${listing.yacht_name}-for-sale`.toLowerCase()
+            let suffix = '-for-sale';
+            if (listing.type === 'daycharter') {
+                suffix = '-day-charter';
+            } else if (listing.type === 'termcharter') {
+                suffix = '-term-charter';
+            }
+            return `${listing.year}-${listing.manufacturer}-${listing.yacht_name}${suffix}`.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '');
         },
@@ -3908,6 +3914,9 @@ engines() { return this.listing?.metadata?.engines || null; },
          padding: 10px 20px;
          font-size: 0.8rem;
        }
+        .ls-key-features {
+        width: 100% !important;
+      }
       }
 
       /* Key Features Section */
@@ -3919,6 +3928,7 @@ engines() { return this.listing?.metadata?.engines || null; },
         overflow: hidden;
         padding: 40px;
         margin-top: 50px;
+        width: 79%;
       }
 
       .ls-section-subtitle {

@@ -29,7 +29,7 @@
                 <i class="fas fa-plus"></i>
                 List a Boat
               </a>
-              <router-link :to="'/broker/' + founder.id" class="founder-btn">
+               <router-link :to="'/broker/' + getBrokerSlug(founder)" class="founder-btn">
                 <i class="fas fa-user"></i>
                 View Profile
               </router-link>
@@ -54,7 +54,7 @@
               <p class="special-team-role">{{ getRole(member) }}</p>
               <div class="special-team-buttons">
                 <a href="#" class="special-team-btn primary">List a Boat</a>
-                <router-link :to="'/broker/' + member.id" class="special-team-btn secondary">View Profile</router-link>
+                 <router-link :to="'/broker/' + getBrokerSlug(member)" class="special-team-btn secondary">View Profile</router-link>
               </div>
             </div>
           </div>
@@ -80,7 +80,7 @@
               <p class="team-role">{{ getRole(member) }}</p>
               <div class="team-buttons">
                 <a href="#" class="team-btn primary">List a Boat</a>
-                <router-link :to="'/broker/' + member.id" class="team-btn secondary">View Profile</router-link>
+                <router-link :to="'/broker/' + getBrokerSlug(member)" class="team-btn secondary">View Profile</router-link>
               </div>
             </div>
           </div>
@@ -155,6 +155,12 @@ export default {
                 return `${broker.specialization} • High Seas Yachting`;
             }
             return 'High Seas Yachting';
+        },
+        getBrokerSlug(broker) {
+            if (broker && broker.name) {
+                return `${broker.name}-high-seas-yachting`;
+            }
+            return '';
         }
     }
 }

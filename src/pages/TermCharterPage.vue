@@ -145,7 +145,7 @@
             >
           </div>
           <div class="term-card-body">
-            <h3>{{ listing.year }} {{ listing.manufacturer }} {{ listing.yachtName }}</h3>
+            <h3>{{ listing.manufacturer }} {{ listing.length }}</h3>
             <p class="term-card-location"><i class="fas fa-map-marker-alt"></i> {{ formatCity(listing.city) }}</p>
             <div class="term-card-specs">
               <div class="term-card-spec"><span>Year</span><strong>{{ listing.year }}</strong></div>
@@ -433,7 +433,7 @@ const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object
             },
             getListingSlug(listing) {
                 if (!listing) return '';
-                return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-for-sale`.toLowerCase()
+                return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-term-charter`.toLowerCase()
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)/g, '');
             },

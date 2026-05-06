@@ -467,7 +467,7 @@ export default {
         },
         generateSlug(listing) {
             if (!listing) return '';
-            return `${listing.year}-${listing.manufacturer}-${listing.yacht_name}-for-sale`.toLowerCase()
+            return `${listing.year}-${listing.manufacturer}-${listing.yacht_name}-day-charter`.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '');
         },

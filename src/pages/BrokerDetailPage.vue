@@ -140,7 +140,7 @@ export default {
     methods: {
         loadBroker() {
             const route = useRoute();
-            const brokerId = route.params.id;
+            const brokerSlug = route.params.id;
             
             let allBrokers = [];
             
@@ -153,7 +153,16 @@ export default {
                 }
             }
             
-            this.broker = allBrokers.find(b => b.id === brokerId) || null;
+            // Extract name from slug (format: "Name-high-seas-yachting")
+            let extractedName = brokerSlug;
+            if (brokerSlug.includes('-high-seas-yachting')) {
+                extractedName = brokerSlug.replace('-high-seas-yachting', '');
+            }
+            
+            // Find broker by matching the name (case-insensitive)
+            this.broker = allBrokers.find(b => 
+                b.name && b.name.toLowerCase() === extractedName.toLowerCase()
+            ) || null;
             
             if (!this.broker && allBrokers.length > 0) {
                 this.broker = allBrokers[0];

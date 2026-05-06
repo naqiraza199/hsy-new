@@ -6,7 +6,7 @@
 
         <!-- Hero Background Video -->
         <video class="hero-video-bg" autoplay muted loop playsinline>
-            <source src="/images/main-video.mp4" type="video/mp4">
+            <source src="/images/hsy-main.MOV" type="video/mp4">
         </video>
         <div class="hero-overlay"></div>
 
@@ -259,7 +259,7 @@
                         <div class="hs-team-card-image">
                             <img :src="getBrokerImage(broker.profile_image)" :alt="broker.name" @error="($event.target.src = '/green.jpg')">
                             <div class="hs-team-card-overlay">
-                                <router-link :to="'/broker/' + broker.id" class="hs-team-view-btn-overlay"><i class="fas fa-user"></i> View Details</router-link>
+                                <router-link :to="'/broker/' + getBrokerSlug(broker)" class="hs-team-view-btn-overlay"><i class="fas fa-user"></i> View Details</router-link>
                             </div>
                         </div>
                         <div class="hs-team-card-info">
@@ -639,6 +639,13 @@ function formatBlogDate(dateString) {
 
 function getDestinationCount(regionId) {
     return destinationCounts.value[regionId] || 0;
+}
+
+function getBrokerSlug(broker) {
+    if (broker && broker.name) {
+        return `${broker.name}-high-seas-yachting`;
+    }
+    return '';
 }
 
 function showNotification(message, type = 'success') {

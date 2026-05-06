@@ -172,7 +172,7 @@ export default {
         },
         getListingSlug(listing) {
             if (!listing) return '';
-            return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-for-sale`.toLowerCase()
+            return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-day-charter`.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '');
         },
