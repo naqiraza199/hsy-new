@@ -590,7 +590,7 @@
                    <i class="fas fa-calendar-check"></i> Book Now
                  </button>
                   <a :href="'mailto:' + contactEmailAddress" class="ls-btn-secondary">
-                    <i class="fas fa-envelope"></i> Email Now
+                    <i class="fas fa-envelope"></i> Book a Showing
                   </a>
                  <a :href="'tel:' + contactPhoneNumber" class="ls-btn-secondary">
                    <i class="fas fa-phone"></i> Call Now

@@ -5,11 +5,11 @@ import path from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const LISTINGS_PATH = path.join(process.cwd(), 'listings.json');
-const BROKERS_PATH = path.join(process.cwd(), 'broker.json');
-const BLOGS_PATH = path.join(process.cwd(), 'blogs.json');
-const EVENTS_PATH = path.join(process.cwd(), 'events.json');
-const YACHT_MLS_PATH = path.join(process.cwd(), 'yacht-mls.json');
+const LISTINGS_PATH = path.join(process.cwd(), 'public', 'data', 'listings.json');
+const BROKERS_PATH = path.join(process.cwd(), 'public', 'data', 'brokers.json');
+const BLOGS_PATH = path.join(process.cwd(), 'public', 'data', 'blogs.json');
+const EVENTS_PATH = path.join(process.cwd(), 'public', 'data', 'events.json');
+const YACHT_MLS_PATH = path.join(process.cwd(), 'public', 'data', 'yacht-mls.json');
 
 app.use(cors({
   origin: '*',
@@ -32,6 +32,10 @@ function loadListings() {
 }
 
 function saveListings(listings) {
+  const dir = path.dirname(LISTINGS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   fs.writeFileSync(LISTINGS_PATH, JSON.stringify(listings, null, 2));
 }
 
@@ -48,6 +52,10 @@ function loadBrokers() {
 }
 
 function saveBrokers(brokers) {
+  const dir = path.dirname(BROKERS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   fs.writeFileSync(BROKERS_PATH, JSON.stringify(brokers, null, 2));
 }
 
@@ -64,6 +72,10 @@ function loadBlogs() {
 }
 
 function saveBlogs(blogs) {
+  const dir = path.dirname(BLOGS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   fs.writeFileSync(BLOGS_PATH, JSON.stringify(blogs, null, 2));
 }
 
@@ -80,6 +92,10 @@ function loadEvents() {
 }
 
 function saveEvents(events) {
+  const dir = path.dirname(EVENTS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   fs.writeFileSync(EVENTS_PATH, JSON.stringify(events, null, 2));
 }
 
@@ -96,6 +112,10 @@ function loadYachtMls() {
 }
 
 function saveYachtMls(yachtMls) {
+  const dir = path.dirname(YACHT_MLS_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
   fs.writeFileSync(YACHT_MLS_PATH, JSON.stringify(yachtMls, null, 2));
 }
 
@@ -121,16 +141,14 @@ app.post('/api/listings', (req, res) => {
     }
 
     if (newListings.length > 0 && newListings[0] !== undefined && newListings[0] !== null) {
-      const existingListings = loadListings();
-      const combinedListings = [...existingListings, ...newListings];
-      saveListings(combinedListings);
+      saveListings(newListings);
 
       console.log(`Saved ${newListings.length} listings`);
 
-      res.json({ 
-        success: true, 
-        message: `Added ${newListings.length} listings`,
-        total: combinedListings.length 
+      res.json({
+        success: true,
+        message: `Replaced listings with ${newListings.length} new listings`,
+        total: newListings.length
       });
     } else {
       res.json({ success: true, message: 'No data to save' });
@@ -173,16 +191,14 @@ app.post('/api/brokers', (req, res) => {
     }
 
     if (newBrokers.length > 0 && newBrokers[0] !== undefined && newBrokers[0] !== null) {
-      const existingBrokers = loadBrokers();
-      const combinedBrokers = [...existingBrokers, ...newBrokers];
-      saveBrokers(combinedBrokers);
+      saveBrokers(newBrokers);
 
       console.log(`Saved ${newBrokers.length} brokers`);
 
-      res.json({ 
-        success: true, 
-        message: `Added ${newBrokers.length} brokers`,
-        total: combinedBrokers.length 
+      res.json({
+        success: true,
+        message: `Replaced brokers with ${newBrokers.length} new brokers`,
+        total: newBrokers.length
       });
     } else {
       res.json({ success: true, message: 'No data to save' });
@@ -225,16 +241,14 @@ app.post('/api/blogs', (req, res) => {
     }
 
     if (newBlogs.length > 0 && newBlogs[0] !== undefined && newBlogs[0] !== null) {
-      const existingBlogs = loadBlogs();
-      const combinedBlogs = [...existingBlogs, ...newBlogs];
-      saveBlogs(combinedBlogs);
+      saveBlogs(newBlogs);
 
       console.log(`Saved ${newBlogs.length} blogs`);
 
-      res.json({ 
-        success: true, 
-        message: `Added ${newBlogs.length} blogs`,
-        total: combinedBlogs.length 
+      res.json({
+        success: true,
+        message: `Replaced blogs with ${newBlogs.length} new blogs`,
+        total: newBlogs.length
       });
     } else {
       res.json({ success: true, message: 'No data to save' });
@@ -277,16 +291,14 @@ app.post('/api/events', (req, res) => {
     }
 
     if (newEvents.length > 0 && newEvents[0] !== undefined && newEvents[0] !== null) {
-      const existingEvents = loadEvents();
-      const combinedEvents = [...existingEvents, ...newEvents];
-      saveEvents(combinedEvents);
+      saveEvents(newEvents);
 
       console.log(`Saved ${newEvents.length} events`);
 
-      res.json({ 
-        success: true, 
-        message: `Added ${newEvents.length} events`,
-        total: combinedEvents.length 
+      res.json({
+        success: true,
+        message: `Replaced events with ${newEvents.length} new events`,
+        total: newEvents.length
       });
     } else {
       res.json({ success: true, message: 'No data to save' });
@@ -329,16 +341,14 @@ app.post('/api/yacht-mls', (req, res) => {
     }
 
     if (newYachtMls.length > 0 && newYachtMls[0] !== undefined && newYachtMls[0] !== null) {
-      const existingYachtMls = loadYachtMls();
-      const combinedYachtMls = [...existingYachtMls, ...newYachtMls];
-      saveYachtMls(combinedYachtMls);
+      saveYachtMls(newYachtMls);
 
       console.log(`Saved ${newYachtMls.length} yacht-mls`);
 
-      res.json({ 
-        success: true, 
-        message: `Added ${newYachtMls.length} yacht-mls`,
-        total: combinedYachtMls.length 
+      res.json({
+        success: true,
+        message: `Replaced yacht-mls with ${newYachtMls.length} new yacht-mls`,
+        total: newYachtMls.length
       });
     } else {
       res.json({ success: true, message: 'No data to save' });
