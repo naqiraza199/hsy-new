@@ -620,27 +620,27 @@
          <h2 class="ls-section-title">{{ brokerSectionTitle }}</h2>
        </div>
 
-       <div class="ls-similar-grid" v-if="brokerListings.length > 0">
-         <div v-for="item in brokerListings" :key="item.id" class="ls-similar-card">
-           <div class="ls-similar-image">
-             <a :href="'/listing-detail/' + item.slug">
-               <img :src="item.imageUrl" :alt="item.yacht_name" @error="($event.target.src = 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=600&q=80')">
-             </a>
-              <span class="ls-similar-badge"><i class="fas fa-map-marker-alt"></i> {{ (item.metadata?.city || item.city) ? formatCityName(item.metadata?.city || item.city) + ', FL' : 'N/A' }}</span>
-           </div>
-            <div class="ls-similar-info">
-             <h3>{{ item.year }} {{ item.manufacturer }} {{ item.yacht_name }}</h3>
-             <div class="ls-yacht-specs">
-               <div><strong>Year</strong>{{ item.year || 'N/A' }}</div>
-               <div><strong>Length</strong>{{ item.length ? item.length + ' ft' : 'N/A' }}</div>
-             </div>
-             <div class="ls-similar-footer">
-               <span class="ls-similar-price">{{ formatCardPrice(item) }}</span>
-               <a :href="'/listing-detail/' + item.slug" class="ls-similar-link">View Details <i class="fas fa-arrow-right"></i></a>
-             </div>
-           </div>
-         </div>
-       </div>
+        <div class="ls-similar-grid" v-if="brokerListings.length > 0">
+          <div v-for="item in brokerListings" :key="item.id" class="ls-similar-card">
+            <div class="ls-similar-image">
+              <router-link :to="'/listing-detail/' + item.slug">
+                <img :src="item.imageUrl" :alt="item.yacht_name" @error="($event.target.src = 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=600&q=80')">
+              </router-link>
+               <span class="ls-similar-badge"><i class="fas fa-map-marker-alt"></i> {{ (item.metadata?.city || item.city) ? formatCityName(item.metadata?.city || item.city) + ', FL' : 'N/A' }}</span>
+            </div>
+             <div class="ls-similar-info">
+              <h3>{{ item.year }} {{ item.manufacturer }} {{ item.yacht_name }}</h3>
+              <div class="ls-yacht-specs">
+                <div><strong>Year</strong>{{ item.year || 'N/A' }}</div>
+                <div><strong>Length</strong>{{ item.length ? item.length + ' ft' : 'N/A' }}</div>
+              </div>
+              <div class="ls-similar-footer">
+                <span class="ls-similar-price">{{ formatCardPrice(item) }}</span>
+                <router-link :to="'/listing-detail/' + item.slug" class="ls-similar-link">View Details <i class="fas fa-arrow-right"></i></router-link>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div v-else class="ls-empty-listing-card">
            <div class="ls-empty-content">
@@ -1566,6 +1566,11 @@ engines() { return this.listing?.metadata?.engines || null; },
            },
 
 
+    },
+    watch: {
+        '$route.params.slug'() {
+            this.loadListing();
+        }
     },
     mounted() {
         this.loadListing();
