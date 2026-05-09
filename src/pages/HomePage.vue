@@ -503,6 +503,8 @@ import NavbarSection from '../components/NavbarSection.vue';
 
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
 
+let homeCache = null;
+
 const featuredListings = ref([]);
 const brokers = ref([]);
 const priorityListings = ref([]);
@@ -525,15 +527,21 @@ async function fetchJSON(url) {
 async function loadAllData() {
     loading.value = true;
     try {
-        const [listingsData, brokersData, blogsData] = await Promise.all([
-            fetchJSON('/data/listings.json'),
-            fetchJSON('/data/brokers.json'),
-            fetchJSON('/data/blogs.json')
-        ]);
+        let records, brokerRecords, blogRecords;
 
-        const records = listingsData[0]?.records || listingsData;
-        const brokerRecords = brokersData[0]?.records || brokersData;
-        const blogRecords = blogsData[0]?.records || blogsData;
+        if (homeCache) {
+            ({ records, brokerRecords, blogRecords } = homeCache);
+        } else {
+            const [listingsData, brokersData, blogsData] = await Promise.all([
+                fetchJSON('/data/listings.json'),
+                fetchJSON('/data/brokers.json'),
+                fetchJSON('/data/blogs.json')
+            ]);
+            records = listingsData[0]?.records || listingsData;
+            brokerRecords = brokersData[0]?.records || brokersData;
+            blogRecords = blogsData[0]?.records || blogsData;
+            homeCache = { records, brokerRecords, blogRecords };
+        }
 
         priorityListings.value = records
             .filter(item => item && item.metadata?.boat_video?.enable_slider === true)
@@ -605,7 +613,7 @@ function getImageUrl(photoPath) {
         return photoPath;
     }
     const path = photoPath.replace(/^\/media\/listings\//, '');
-    return SUPABASE_URL + encodeURIComponent(path);
+    return SUPABASE_URL + path.split('/').map(encodeURIComponent).join('/');
 }
 
 function getBrokerImage(profileImage) {

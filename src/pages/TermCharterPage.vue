@@ -317,9 +317,7 @@
 <script>
 import NavbarSection from '../components/NavbarSection.vue';
 import FooterSection from '../components/FooterSection.vue';
-import listingsDataRaw from '../../listings.json';
-
-const listingsData = Array.isArray(listingsDataRaw) ? listingsDataRaw : [listingsDataRaw];
+let termcharterCache = null;
 
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
 
@@ -340,8 +338,12 @@ const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object
                 }
             };
         },
-        mounted: function() {
-            this.loadTermcharterListings();
+        async mounted() {
+            if (termcharterCache) {
+                this.termcharterListings = termcharterCache;
+            } else {
+                await this.loadTermcharterListings();
+            }
         },
         methods: {
             showNotification(message, type = 'success') {
@@ -398,38 +400,31 @@ const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object
                     self.formLoading = false;
                 });
             },
-            loadTermcharterListings() {
-                let records = [];
-                
-                if (listingsData) {
-                    if (Array.isArray(listingsData) && listingsData.length > 0) {
-                        const firstItem = listingsData[0];
-                        if (firstItem && firstItem.records && Array.isArray(firstItem.records)) {
-                            records = firstItem.records;
-                        } else if (Array.isArray(listingsData)) {
-                            records = listingsData;
-                        }
-                    } else if (listingsData.records && Array.isArray(listingsData.records)) {
-                        records = listingsData.records;
-                    }
+            async loadTermcharterListings() {
+                try {
+                    const data = await fetch('/data/listings.json').then(r => r.json());
+                    const records = data[0]?.records || data;
+                    this.termcharterListings = records
+                        .filter(item => item && item.type === 'termcharter')
+                        .map(listing => ({
+                            id: listing.id,
+                            yachtName: listing.yacht_name,
+                            year: listing.year,
+                            manufacturer: listing.manufacturer,
+                            length: listing.length,
+                            city: listing.metadata?.city || listing.city || '',
+                            photos: listing.metadata?.photos || []
+                        }));
+                    termcharterCache = this.termcharterListings;
+                } catch (error) {
+                    console.error('Error loading term charter listings:', error);
                 }
-                
-                this.termcharterListings = records
-                    .filter(item => item && item.type === 'termcharter')
-                    .map(listing => ({
-                        id: listing.id,
-                        yachtName: listing.yacht_name,
-                        year: listing.year,
-                        manufacturer: listing.manufacturer,
-                        length: listing.length,
-                        city: listing.metadata?.city || listing.city || '',
-                        photos: listing.metadata?.photos || []
-                    }));
             },
             getImageUrl(photoPath) {
                 if (!photoPath) return '';
-                const filename = photoPath.split('/').pop();
-                return SUPABASE_URL + encodeURIComponent(filename);
+                if (photoPath.startsWith('http')) return photoPath;
+                const path = photoPath.replace(/^\/media\/listings\//, '');
+                return SUPABASE_URL + path.split('/').map(encodeURIComponent).join('/');
             },
             getListingSlug(listing) {
                 if (!listing) return '';

@@ -23,8 +23,10 @@
         <p class="hero-subtitle"><i class="fas fa-map-marker-alt"></i> {{ displayLocation }}</p>
       </div>
       <div class="hero-price" v-if="listing.type === 'forsale'">
-        <div class="price-label">Asking Price</div>
-        <div class="price-value">{{ formattedPrice }}</div>
+        <div class="price-label">{{ listing.sale_status === 'sold' ? 'Status' : 'Asking Price' }}</div>
+        <div class="price-value" :style="listing.sale_status === 'sold' ? 'color:#e74c3c' : ''">
+          {{ listing.sale_status === 'sold' ? 'SOLD' : formattedPrice }}
+        </div>
       </div>
       <div class="hero-price" v-else-if="listing.type === 'daycharter'">
         <div class="price-label">Hourly Rate</div>
@@ -82,11 +84,15 @@
           <div class="ls-details-card">
             <div class="ls-details-header">
               <div class="ls-details-info">
-                <h2 class="ls-details-title">{{ listing.year }} {{ listing.manufacturer }} {{ listing.yacht_name }}</h2>
+                <h2 class="ls-details-title">{{ listing.year }} {{ listing.manufacturer }} {{ listing.length }}</h2>
                 <div class="ls-details-meta">
                   <span><i class="fas fa-tag"></i> {{ listingLabel }}</span>
                   <span><i class="fas fa-map-marker-alt"></i> {{ displayLocation }}</span>
-                  <span v-if="listing.type === 'forsale'"><i class="fas fa-tag"></i> {{ formattedPrice }}</span>
+                  <span v-if="listing.type === 'forsale'">
+                    <i class="fas fa-tag"></i>
+                    <span v-if="listing.sale_status === 'sold'" style="color:#e74c3c;font-weight:700">SOLD</span>
+                    <span v-else>{{ formattedPrice }}</span>
+                  </span>
                   <span v-else-if="listing.type === 'daycharter'"><i class="fas fa-clock"></i> {{ formattedHourlyPrice }}</span>
                   <span v-else-if="listing.type === 'termcharter'"><i class="fas fa-calendar"></i> Starting {{ termCharterMinPrice }}</span>
                 </div>
@@ -333,7 +339,7 @@
                   </div>
                 </div>
                 <div class="ls-broker-detail" v-else>
-                  <img src="https://highseasyachting.com/wp-content/uploads/2023/01/HSY-Icon-Large-e1672947511783-290x300-1.png" alt="Broker" class="ls-broker-detail-avatar">
+                  <img src="/images/favicon.png" alt="Broker" class="ls-broker-detail-avatar">
                   <div class="ls-broker-detail-info">
                     <h3>High Seas Yachting</h3>
                     <p>Contact us for more information about this yacht or to schedule a viewing.</p>
@@ -418,7 +424,7 @@
 
            <div class="ls-broker-card" v-else>
              <div class="ls-broker-header">
-               <img src="https://highseasyachting.com/wp-content/uploads/2023/01/HSY-Icon-Large-e1672947511783-290x300-1.png" alt="Broker" class="ls-broker-avatar">
+               <img src="/images/favicon.png" alt="Broker" class="ls-broker-avatar">
                <div class="ls-broker-info">
                  <h4>High Seas Yachting</h4>
                </div>
@@ -452,8 +458,10 @@
           <!-- Price Card -->
           <div class="ls-price-card" v-if="listing.type === 'forsale'">
             <div class="ls-price-header">
-              <span class="ls-price-label">Asking Price</span>
-              <div class="ls-price-value">{{ formattedPrice }}</div>
+              <span class="ls-price-label">{{ listing.sale_status === 'sold' ? 'Status' : 'Asking Price' }}</span>
+              <div class="ls-price-value" :style="listing.sale_status === 'sold' ? 'color:#e74c3c;font-weight:800' : ''">
+                {{ listing.sale_status === 'sold' ? 'SOLD' : formattedPrice }}
+              </div>
             </div>
           </div>
 
@@ -499,8 +507,8 @@
             </div>
           </div>
 
-          <!-- Payment Calculator Card (only for forsale) -->
-          <div class="ls-calc-card" v-if="listing.type === 'forsale'">
+           <!-- Payment Calculator Card (only for forsale) -->
+           <div class="ls-calc-card" v-if="listing.type === 'forsale' && listing.sale_status !== 'sold'">
             <div class="ls-calc-header">
               <h4><i class="fas fa-calculator"></i> Payment Calculator</h4>
             </div>
@@ -566,7 +574,7 @@
         
       </div>
        <!-- Key Features Slider -->
-                 <div v-if="listing.metadata?.key_features && listing.metadata.key_features.length > 0" class="ls-key-features">
+                   <div v-if="hasValidKeyFeatures" class="ls-key-features">
                    <h3 class="ls-section-subtitle">Key Features</h3>
                    <div class="ls-key-features-slider">
                      <div 
@@ -1044,6 +1052,11 @@ engines() { return this.listing?.metadata?.engines || null; },
                 (this.listing?.metadata?.water_toys && Object.keys(this.listing.metadata.water_toys).length > 0) ||
                 (this.listing?.metadata?.tanks && Object.keys(this.listing.metadata.tanks).length > 0);
             return hasFeatureItems || hasEquipmentSections;
+        },
+        hasValidKeyFeatures() {
+            const features = this.listing?.metadata?.key_features;
+            if (!features || features.length === 0) return false;
+            return features.every(f => f.title.trim() && f.description.trim());
         },
           headerBackgroundImage() {
               const fallback = 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=1920&q=80';

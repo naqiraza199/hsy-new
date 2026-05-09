@@ -80,7 +80,7 @@
     </div>
 
     <!-- No Results -->
-    <div v-if="daycharterByCity.length === 0" class="hs-no-results">
+    <div v-if="!loading && daycharterByCity.length === 0" class="hs-no-results">
       <p>No day charter yachts available at the moment. Please check back later.</p>
     </div>
   </div>
@@ -92,11 +92,10 @@
 <script>
 import FooterSection from '../components/FooterSection.vue';
 import NavbarSection from '../components/NavbarSection.vue';
-import listingsDataRaw from '../../listings.json';
-
-const listingsData = Array.isArray(listingsDataRaw) ? listingsDataRaw : [listingsDataRaw];
 
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
+
+let daycharterCache = null;
 
 export default {
     name: 'DayCharterPage',
@@ -108,67 +107,70 @@ export default {
         return {
             daycharterByCity: [],
             uniqueCities: [],
-            activeCity: 'fort lauderdale'
+            activeCity: 'fort lauderdale',
+            loading: true,
         };
     },
-    mounted: function() {
-        this.loadDaycharterListings();
+    async mounted() {
+        if (daycharterCache) {
+            this.daycharterByCity = daycharterCache.byCity;
+            this.uniqueCities = daycharterCache.cities;
+            this.loading = false;
+        } else {
+            await this.loadDaycharterListings();
+        }
     },
     methods: {
-        loadDaycharterListings() {
-            let records = [];
-            
-            if (listingsData) {
-                if (Array.isArray(listingsData) && listingsData.length > 0) {
-                    const firstItem = listingsData[0];
-                    if (firstItem && firstItem.records && Array.isArray(firstItem.records)) {
-                        records = firstItem.records;
-                    } else if (Array.isArray(listingsData)) {
-                        records = listingsData;
-                    }
-                } else if (listingsData.records && Array.isArray(listingsData.records)) {
-                    records = listingsData.records;
-                }
-            }
-            
-            const allDaycharters = records
-                .filter(item => item && item.type === 'daycharter')
-                .map(listing => ({
-                    id: listing.id,
-                    yachtName: listing.yacht_name,
-                    year: listing.year,
-                    manufacturer: listing.manufacturer,
-                    length: listing.length,
-                    city: listing.city || listing.metadata?.city || '',
-                    photos: listing.metadata?.photos || [],
-                    pricing: listing.metadata?.pricing?.retail || {}
+        async loadDaycharterListings() {
+            try {
+                const response = await fetch('/data/listings.json');
+                const listingsData = await response.json();
+                const records = listingsData[0]?.records || listingsData;
+
+                const allDaycharters = records
+                    .filter(item => item && item.type === 'daycharter')
+                    .map(listing => ({
+                        id: listing.id,
+                        yachtName: listing.yacht_name,
+                        year: listing.year,
+                        manufacturer: listing.manufacturer,
+                        length: listing.length,
+                        city: listing.city || listing.metadata?.city || '',
+                        photos: listing.metadata?.photos || [],
+                        pricing: listing.metadata?.pricing?.retail || {}
+                    }));
+
+                const cities = {};
+                allDaycharters.forEach(item => {
+                    const cityKey = item.city ? item.city.toLowerCase() : 'unknown';
+                    if (!cities[cityKey]) cities[cityKey] = [];
+                    cities[cityKey].push(item);
+                });
+
+                const sortedCities = Object.keys(cities).sort((a, b) => {
+                    if (a === 'fort lauderdale') return -1;
+                    if (b === 'fort lauderdale') return 1;
+                    return a.localeCompare(b);
+                });
+                this.uniqueCities = sortedCities;
+
+                this.daycharterByCity = sortedCities.map(cityName => ({
+                    cityName: cityName.charAt(0).toUpperCase() + cityName.slice(1),
+                    listings: cities[cityName]
                 }));
-            
-            const cities = {};
-            allDaycharters.forEach(item => {
-                const cityKey = item.city ? item.city.toLowerCase() : 'unknown';
-                if (!cities[cityKey]) {
-                    cities[cityKey] = [];
-                }
-                cities[cityKey].push(item);
-            });
-            
-            const sortedCities = Object.keys(cities).sort((a, b) => {
-                if (a === 'fort lauderdale') return -1;
-                if (b === 'fort lauderdale') return 1;
-                return a.localeCompare(b);
-            });
-            this.uniqueCities = sortedCities;
-            
-            this.daycharterByCity = sortedCities.map(cityName => ({
-                cityName: cityName.charAt(0).toUpperCase() + cityName.slice(1),
-                listings: cities[cityName]
-            }));
+
+                daycharterCache = { byCity: this.daycharterByCity, cities: this.uniqueCities };
+            } catch (error) {
+                console.error('Error loading day charter listings:', error);
+            } finally {
+                this.loading = false;
+            }
         },
         getImageUrl(photoPath) {
             if (!photoPath) return '';
-            const filename = photoPath.split('/').pop();
-            return SUPABASE_URL + encodeURIComponent(filename);
+            if (photoPath.startsWith('http')) return photoPath;
+            const path = photoPath.replace(/^\/media\/listings\//, '');
+            return SUPABASE_URL + path.split('/').map(encodeURIComponent).join('/');
         },
         getListingSlug(listing) {
             if (!listing) return '';

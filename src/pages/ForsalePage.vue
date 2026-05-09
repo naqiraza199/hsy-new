@@ -160,14 +160,14 @@
           >
             <div class="hs-yacht-image">
               <router-link :to="'/listing-detail/' + getListingSlug(listing)">
-                <img 
-                  :src="getImageUrl(listing.photos[0], listing.source)" 
-                  :alt="listing.yachtName" 
+                <img
+                  :src="getImageUrl(listing.photos[0], listing.source)"
+                  :alt="listing.yachtName"
                   loading="lazy"
                   @error="($event.target.src = 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=600&q=80')"
                 >
               </router-link>
-            
+              <span v-if="listing.saleStatus === 'sold'" class="hs-sold-badge">SOLD</span>
               <router-link :to="'/listing-detail/' + getListingSlug(listing)" class="hs-view-details-overlay">
                 <i class="fas fa-eye"></i>
                 View Details
@@ -194,7 +194,9 @@
                 </div>
               </div>
               <div class="hs-yacht-price-row">
-                <div class="hs-yacht-price">{{ formatPrice(listing.price) }}</div>
+                <div class="hs-yacht-price" :class="{ 'hs-price-sold': listing.saleStatus === 'sold' }">
+                  {{ listing.saleStatus === 'sold' ? 'SOLD' : formatPrice(listing.price) }}
+                </div>
               </div>
               <div class="hs-card-actions">
                 <router-link :to="'/listing-detail/' + getListingSlug(listing)" class="hs-view-details-btn">
@@ -208,7 +210,7 @@
             </div>
           </article>
         </div>
-
+        
         <!-- Pagination -->
         <div class="hs-pagination-wrapper" v-if="!loading && filteredListings.length > 0">
           <p class="hs-results-info">Showing <strong>{{ startItem }} - {{ endItem }}</strong> of <strong>{{ filteredListings.length }}</strong> results</p>
@@ -263,11 +265,7 @@ import FooterSection from '../components/FooterSection.vue';
 
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
 
-// In-memory cache to persist data across SPA navigation (cleared on page reload)
-let forsalePageCache = null;
-let forsalePageCacheTotal = 0;
-let forsalePageDisplayCache = null;
-let forsalePageLoadedCount = 0;
+let forsaleCurrentPage = 1;
 
 export default {
   name: 'ForsalePage',
@@ -277,7 +275,6 @@ export default {
   },
   data() {
     return {
-      forsaleListings: [],
       allForsaleListings: [],
       filteredListings: [],
       currentPage: 1,
@@ -294,11 +291,7 @@ export default {
       searchQuery: '',
       loading: true,
       showFilters: false,
-      totalListingsCount: 0,
-      loadedCount: 0,
       isLoadingMore: false,
-      BATCH_SIZE: 100,
-      loadingIntervalId: null
     };
   },
   computed: {
@@ -320,7 +313,7 @@ export default {
       const pages = [];
       const total = this.totalPages;
       const current = this.currentPage;
-      
+
       if (total <= 7) {
         for (let i = 1; i <= total; i++) pages.push(i);
       } else {
@@ -350,467 +343,189 @@ export default {
       return [...new Set(locations)].sort();
     },
     uniqueMakes() {
-      const makes = this.allForsaleListings
-        .map(item => item.manufacturer)
-        .filter(m => m);
-      return [...new Set(makes)].sort();
+      return [...new Set(this.allForsaleListings.map(item => item.manufacturer).filter(m => m))].sort();
     },
     uniqueModels() {
-      const models = this.allForsaleListings
-        .map(item => item.yachtName)
-        .filter(m => m);
-      return [...new Set(models)].sort();
+      return [...new Set(this.allForsaleListings.map(item => item.yachtName).filter(m => m))].sort();
     },
     uniqueLengths() {
-      const lengths = this.allForsaleListings
-        .map(item => item.length)
-        .filter(l => l);
-      return [...new Set(lengths)].sort((a, b) => a - b);
+      return [...new Set(this.allForsaleListings.map(item => item.length).filter(l => l))].sort((a, b) => a - b);
     },
     uniquePrices() {
-      const prices = this.allForsaleListings
-        .map(item => item.price)
-        .filter(p => p);
-      return [...new Set(prices)].sort((a, b) => a - b);
+      return [...new Set(this.allForsaleListings.map(item => item.price).filter(p => p))].sort((a, b) => a - b);
     },
-     uniqueYears() {
-       const years = this.allForsaleListings
-         .map(item => item.year)
-         .filter(y => y);
-       return [...new Set(years)].sort((a, b) => b - a);
-     },
-     hasMoreListings() {
-       return this.loadedCount < this.totalListingsCount;
-     }
+    uniqueYears() {
+      return [...new Set(this.allForsaleListings.map(item => item.year).filter(y => y))].sort((a, b) => b - a);
     },
-   watch: {
-     filters: {
-       handler() {
-         this.applyFilters();
-       },
-       deep: true
-     },
-     sortBy() {
-       this.applyFilters();
-     },
-     searchQuery() {
-       this.applyFilters();
-     },
-     loadedCount() {
-       // When new records are loaded, re-apply incremental filters
-       this.applyFiltersIncremental();
-     },
-     '$route.query.q'(newQuery) {
-       // Update searchQuery when URL query changes
-       if (newQuery !== undefined) {
-         this.searchQuery = newQuery || '';
-       }
-     }
-   },
-    async mounted() {
-      // Check for search query in URL
-      if (this.$route.query.q) {
-        this.searchQuery = this.$route.query.q;
+  },
+  watch: {
+    filters: {
+      handler() {
+        this.applyFilters();
+      },
+      deep: true
+    },
+    sortBy() {
+      this.applyFilters();
+    },
+    searchQuery() {
+      this.applyFilters();
+    },
+    '$route.query.q'(newQuery) {
+      if (newQuery !== undefined) {
+        this.searchQuery = newQuery || '';
       }
+    }
+  },
+  async mounted() {
+    if (this.$route.query.q) {
+      this.searchQuery = this.$route.query.q;
+    }
 
-      // Check if data is already cached in memory (from previous navigation in same SPA session)
-       if (forsalePageCache && forsalePageCache.length > 0) {
-         // Use cached data - instant, no loader
-         this.loading = false;
-         this.allForsaleListings = forsalePageCache;
-         this.totalListingsCount = forsalePageCacheTotal;
-
-         // Restore previously displayed listings and loaded count from cache
-         if (forsalePageDisplayCache && forsalePageDisplayCache.length > 0) {
-           this.forsaleListings = forsalePageDisplayCache;
-           this.loadedCount = forsalePageLoadedCount;
-         } else {
-           const firstBatchSize = Math.min(this.BATCH_SIZE, this.totalListingsCount);
-           this.forsaleListings = this.allForsaleListings.slice(0, firstBatchSize);
-           this.loadedCount = firstBatchSize;
-         }
-
-         // Apply filters (including searchQuery if set from URL)
-         this.applyFilters();
-
-         // Start background loading for remaining records
-         this.startBackgroundLoading();
-
-         console.log('Loaded from memory cache - loaded count:', this.loadedCount);
-       } else {
-        // First visit or page reload - show full loader and fetch data
-        this.loading = true;
-        await this.loadForsaleListings();
-      }
-    },
-    methods: {
+    await this.loadForsaleListings();
+    this.currentPage = forsaleCurrentPage;
+  },
+  beforeUnmount() {
+    forsaleCurrentPage = this.currentPage;
+  },
+  methods: {
     formatCityName(city) {
       if (!city) return 'N/A';
       return city.toLowerCase().split(' ').map(word =>
         word.charAt(0).toUpperCase() + word.slice(1)
       ).join(' ');
     },
+    processListing(listing, source, sortOrder) {
+      const photos = listing.metadata?.photos?.length > 0
+        ? listing.metadata.photos
+        : (listing.first_photo_url ? [listing.first_photo_url] : []);
+      return {
+        id: listing.id,
+        yachtName: (listing.yacht_name || '').trim(),
+        year: listing.year || 0,
+        manufacturer: (listing.manufacturer || '').trim(),
+        length: listing.length || 0,
+        city: (listing.city || listing.metadata?.location || '').trim(),
+        price: listing.metadata?.price || listing.price || 0,
+        photos,
+        source,
+        sortOrder,
+        is_priority: source === 'listings' && listing.is_priority === true,
+        saleStatus: listing.sale_status || 'active',
+      };
+    },
     async loadForsaleListings() {
       try {
+        // Fetch both sources simultaneously instead of sequentially
+          const [listingsResult, mlsResult] = await Promise.allSettled([
+          fetch('/data/listings.json').then(r => r.json()),
+          fetch('/data/yacht-mls-forsale.json').then(r => r.json()),
+        ]);
+
         let forsaleListings = [];
+        if (listingsResult.status === 'fulfilled') {
+          const records = listingsResult.value[0]?.records || listingsResult.value;
+          forsaleListings = records
+            .filter(item => item && item.type === 'forsale')
+            .map(l => this.processListing(l, 'listings', 0));
+        } else {
+          console.error('Error loading listings.json:', listingsResult.reason);
+        }
+
         let mlsListings = [];
-        
-        // Load all data from JSON files (fast - local files)
-        try {
-          const listingsResponse = await fetch('/data/listings.json');
-          const listingsData = await listingsResponse.json();
-          const listingsRecords = listingsData[0]?.records || listingsData;
-          
-           forsaleListings = listingsRecords
-             .filter(item => item && item.type === 'forsale')
-             .map(listing => {
-               const photos = listing.metadata?.photos?.length > 0
-                 ? listing.metadata.photos
-                 : (listing.first_photo_url ? [listing.first_photo_url] : []);
-               return {
-                 id: listing.id,
-                 yachtName: (listing.yacht_name || '').trim(),
-                 year: listing.year || 0,
-                 manufacturer: (listing.manufacturer || '').trim(),
-                 length: listing.length || 0,
-                 beam: listing.beam || 0,
-                 draft: listing.draft || 0,
-                 description: listing.description || '',
-                 city: (listing.city || listing.metadata?.location || '').trim(),
-                 price: listing.price || 0,
-                 photos: photos,
-                 source: 'listings',
-                 sortOrder: 0
-               };
-             });
-        } catch (e) {
-          console.error('Error loading listings.json:', e);
+        if (mlsResult.status === 'fulfilled') {
+          mlsListings = mlsResult.value.map(l => this.processListing(l, 'yacht-mls', 1));
+        } else {
+          console.error('Error loading yacht-mls-forsale.json:', mlsResult.reason);
         }
-        
-        try {
-          const mlsResponse = await fetch('/data/yacht-mls-forsale.json');
-          if (!mlsResponse.ok) throw new Error('Failed to load yacht-mls-forsale.json: ' + mlsResponse.status);
-          const mlsData = await mlsResponse.json();
-
-          console.log('Yacht-MLS: Total forsale records found:', mlsData.length);
-
-          mlsListings = mlsData.map(listing => {
-             const photos = listing.metadata?.photos?.length > 0
-               ? listing.metadata.photos
-               : (listing.first_photo_url ? [listing.first_photo_url] : []);
-             return {
-               id: listing.id,
-               yachtName: (listing.yacht_name || '').trim(),
-               year: listing.year || 0,
-               manufacturer: (listing.manufacturer || '').trim(),
-               length: listing.length || 0,
-               beam: listing.beam || 0,
-               draft: listing.draft || 0,
-               description: listing.description || '',
-               city: (listing.city || listing.metadata?.location || '').trim(),
-               price: listing.price || 0,
-               photos: photos,
-               source: 'yacht-mls',
-               sortOrder: 1
-             };
-           });
-          console.log('Yacht-MLS: Forsale listings processed:', mlsListings.length);
-        } catch (e) {
-          console.error('Error loading yacht-mls-forsale.json:', e);
-        }
-        
-        // Combine and deduplicate using unique id as key
-         const combined = [...forsaleListings, ...mlsListings];
-         console.log('Combined total before deduplication:', combined.length, '(', forsaleListings.length, 'from listings +', mlsListings.length, 'from mls)');
-         
-         const seen = new Set();
-         this.allForsaleListings = combined.filter(listing => {
-           const key = String(listing.id);
-           if (seen.has(key)) {
-             return false;
-           }
-           seen.add(key);
-           return true;
-         });
-        
-        console.log('After deduplication:', this.allForsaleListings.length, 'unique listings');
-        console.log('Sample listings:', this.allForsaleListings.slice(0, 3));
-        console.log('Source breakdown:', {
-          listings: this.allForsaleListings.filter(l => l.source === 'listings').length,
-          'yacht-mls': this.allForsaleListings.filter(l => l.source === 'yacht-mls').length
+        const seen = new Set();
+        this.allForsaleListings = [...forsaleListings, ...mlsListings].filter(listing => {
+          const key = String(listing.id);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
         });
-        
-         // Cache in memory for SPA navigation
-         forsalePageCache = this.allForsaleListings;
-         forsalePageCacheTotal = this.allForsaleListings.length;
-         forsalePageDisplayCache = this.forsaleListings;
-         forsalePageLoadedCount = this.loadedCount;
-        
-        // Set total count
-        this.totalListingsCount = this.allForsaleListings.length;
-        
-        // Load first batch immediately
-        this.loadedCount = 0;
-        await this.loadNextBatch();
-        
-        // Apply filters to first batch
+
+
         this.applyFilters();
-        
-        // Set up background incremental loading
-        this.startBackgroundLoading();
-        
-        console.log('Total records:', this.totalListingsCount, 'Initial batch loaded:', this.loadedCount);
       } catch (error) {
         console.error('Error loading listings:', error);
       } finally {
         this.loading = false;
       }
     },
-    
-    async loadNextBatch() {
-      if (this.isLoadingMore || this.loadedCount >= this.totalListingsCount) {
-        if (this.loadedCount >= this.totalListingsCount) {
-          console.log('All records already loaded:', this.loadedCount, '/', this.totalListingsCount);
-        }
-        return;
-      }
-      
-      this.isLoadingMore = true;
-      
-      try {
-        // Simulate small delay for smooth UX
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        const remaining = this.totalListingsCount - this.loadedCount;
-        const batchSize = Math.min(this.BATCH_SIZE, remaining);
-        const nextCount = this.loadedCount + batchSize;
-        
-        // Get next batch of raw listings
-        const nextBatch = this.allForsaleListings.slice(this.loadedCount, nextCount);
-        
-         // Append to displayed listings
-         this.forsaleListings = [...this.forsaleListings, ...nextBatch];
-         this.loadedCount = nextCount;
-
-         // Cache displayed listings for SPA navigation
-         forsalePageDisplayCache = this.forsaleListings;
-         forsalePageLoadedCount = this.loadedCount;
-        
-        console.log('Batch loaded:', this.loadedCount, '/', this.totalListingsCount, 'new this batch:', nextBatch.length);
-      } finally {
-        this.isLoadingMore = false;
-      }
-      
-      // Note: applyFiltersIncremental() will be triggered by the loadedCount watcher
-    },
-    
-    startBackgroundLoading() {
-      // Load next batch every 600ms until all records are loaded
-      this.loadingIntervalId = setInterval(() => {
-        // Only clear if loading is complete; skip if currently loading
-        if (this.loadedCount >= this.totalListingsCount) {
-          clearInterval(this.loadingIntervalId);
-          this.loadingIntervalId = null;
-          console.log('Background loading complete. Total loaded:', this.loadedCount);
-          return;
-        }
-        // Skip this tick if already loading, wait for next
-        if (this.isLoadingMore) {
-          return;
-        }
-        this.loadNextBatch();
-      }, 600);
-      
-      // Also trigger immediate load when user reaches last page
-      this.$watch('currentPage', (newPage) => {
-        if (newPage === this.totalPages && this.hasMoreListings && !this.isLoadingMore) {
-          this.loadNextBatch();
-        }
-      });
-    },
     applyFilters() {
-      // Work with currently loaded listings only
-      let result = [...this.forsaleListings];
-      
+      let result = [...this.allForsaleListings];
+
       const searchLower = (this.searchQuery || '').toLowerCase();
       if (searchLower) {
-        result = result.filter(item => 
+        result = result.filter(item =>
           (item.yachtName || '').toLowerCase().includes(searchLower) ||
           (item.manufacturer || '').toLowerCase().includes(searchLower) ||
           (item.city || '').toLowerCase().includes(searchLower) ||
           String(item.year || '').includes(searchLower)
         );
       }
-      
+
       if (this.filters.location) {
         const loc = this.filters.location.toLowerCase();
-        result = result.filter(item => 
-          item.city && item.city.toLowerCase().includes(loc)
-        );
+        result = result.filter(item => item.city && item.city.toLowerCase().includes(loc));
       }
-      
+
       if (this.filters.make) {
         const make = this.filters.make.toLowerCase();
-        result = result.filter(item => 
-          item.manufacturer && item.manufacturer.toLowerCase().includes(make)
-        );
+        result = result.filter(item => item.manufacturer && item.manufacturer.toLowerCase().includes(make));
       }
-      
+
       if (this.filters.model) {
         const model = this.filters.model.toLowerCase();
-        result = result.filter(item => 
-          item.yachtName && item.yachtName.toLowerCase().includes(model)
-        );
+        result = result.filter(item => item.yachtName && item.yachtName.toLowerCase().includes(model));
       }
-      
+
       if (this.filters.length) {
         const len = this.filters.length.toLowerCase();
-        result = result.filter(item => 
-          item.length && String(item.length).includes(len)
-        );
+        result = result.filter(item => item.length && String(item.length).includes(len));
       }
-      
+
       if (this.filters.price) {
         const priceInput = this.filters.price.replace(/[^0-9]/g, '');
         if (priceInput) {
           const priceNum = parseInt(priceInput);
-          result = result.filter(item => 
-            item.price && item.price <= priceNum
-          );
+          result = result.filter(item => item.price && item.price <= priceNum);
         }
       }
-      
+
       if (this.filters.year) {
         const year = this.filters.year.toLowerCase();
-        result = result.filter(item => 
-          item.year && String(item.year).includes(year)
-        );
+        result = result.filter(item => item.year && String(item.year).includes(year));
       }
-      
-       // Sort: always keep listings.json (sortOrder 0) before yacht-mls (sortOrder 1), then apply user sort within each group
-       const sortBy = this.sortBy;
-       result.sort((a, b) => {
-         // Primary: sortOrder (listings.json first)
-         if (a.sortOrder !== b.sortOrder) {
-           return (a.sortOrder || 0) - (b.sortOrder || 0);
-         }
-         // Secondary: user-selected sort
-         switch(sortBy) {
-           case 'price-low':
-             return (a.price || 0) - (b.price || 0);
-           case 'price-high':
-             return (b.price || 0) - (a.price || 0);
-           case 'length-high':
-             return (b.length || 0) - (a.length || 0);
-           case 'newest':
-           default:
-             return (b.year || 0) - (a.year || 0);
-         }
-       });
-      
+
+      const sortBy = this.sortBy;
+      result.sort((a, b) => {
+        // First, priority: true first
+        if (a.is_priority !== b.is_priority) {
+          return b.is_priority - a.is_priority; // true (1) before false (0)
+        }
+        // Then sortOrder
+        if (a.sortOrder !== b.sortOrder) return (a.sortOrder || 0) - (b.sortOrder || 0);
+        // Then the user's sort
+        switch (sortBy) {
+          case 'price-low': return (a.price || 0) - (b.price || 0);
+          case 'price-high': return (b.price || 0) - (a.price || 0);
+          case 'length-high': return (b.length || 0) - (a.length || 0);
+          case 'newest':
+          default: return (b.year || 0) - (a.year || 0);
+        }
+      });
+
       this.filteredListings = result;
       this.currentPage = 1;
     },
-    
-    applyFiltersIncremental() {
-      // Apply filters only to newly added records and append
-      const previouslyFiltered = this.filteredListings;
-      const allLoaded = this.forsaleListings;
-      
-      // Find new records that haven't been filtered yet
-      const existingIds = new Set(previouslyFiltered.map(l => l.id));
-      const newRecords = allLoaded.filter(l => !existingIds.has(l.id));
-      
-      if (newRecords.length === 0) return;
-      
-      // Apply current filters to new records (without sorting yet)
-      let filteredNew = [...newRecords];
-      
-      const searchLower = (this.searchQuery || '').toLowerCase();
-      if (searchLower) {
-        filteredNew = filteredNew.filter(item => 
-          (item.yachtName || '').toLowerCase().includes(searchLower) ||
-          (item.manufacturer || '').toLowerCase().includes(searchLower) ||
-          (item.city || '').toLowerCase().includes(searchLower) ||
-          String(item.year || '').includes(searchLower)
-        );
-      }
-      
-      if (this.filters.location) {
-        const loc = this.filters.location.toLowerCase();
-        filteredNew = filteredNew.filter(item => 
-          item.city && item.city.toLowerCase().includes(loc)
-        );
-      }
-      
-      if (this.filters.make) {
-        const make = this.filters.make.toLowerCase();
-        filteredNew = filteredNew.filter(item => 
-          item.manufacturer && item.manufacturer.toLowerCase().includes(make)
-        );
-      }
-      
-      if (this.filters.model) {
-        const model = this.filters.model.toLowerCase();
-        filteredNew = filteredNew.filter(item => 
-          item.yachtName && item.yachtName.toLowerCase().includes(model)
-        );
-      }
-      
-      if (this.filters.length) {
-        const len = this.filters.length.toLowerCase();
-        filteredNew = filteredNew.filter(item => 
-          item.length && String(item.length).includes(len)
-        );
-      }
-      
-      if (this.filters.price) {
-        const priceInput = this.filters.price.replace(/[^0-9]/g, '');
-        if (priceInput) {
-          const priceNum = parseInt(priceInput);
-          filteredNew = filteredNew.filter(item => 
-            item.price && item.price <= priceNum
-          );
-        }
-      }
-      
-      if (this.filters.year) {
-        const year = this.filters.year.toLowerCase();
-        filteredNew = filteredNew.filter(item => 
-          item.year && String(item.year).includes(year)
-        );
-      }
-      
-       // Merge: append new records after existing filtered listings
-       // New records from MLS should always go after listings.json records
-       this.filteredListings = [...previouslyFiltered, ...filteredNew];
-
-       // Re-sort: keep listings.json (sortOrder 0) before yacht-mls (sortOrder 1), then user sort within groups
-       const sortBy = this.sortBy;
-       this.filteredListings.sort((a, b) => {
-         if (a.sortOrder !== b.sortOrder) {
-           return (a.sortOrder || 0) - (b.sortOrder || 0);
-         }
-         switch(sortBy) {
-           case 'price-low':
-             return (a.price || 0) - (b.price || 0);
-           case 'price-high':
-             return (b.price || 0) - (a.price || 0);
-           case 'length-high':
-             return (b.length || 0) - (a.length || 0);
-           case 'newest':
-           default:
-             return (b.year || 0) - (a.year || 0);
-         }
-       });
-    },
-    getImageUrl(photoPath, source) {
+        getImageUrl(photoPath, source) {
       if (!photoPath) return '';
-      if (source === 'yacht-mls' || photoPath.startsWith('http')) {
-        return photoPath;
-      }
+      if (source === 'yacht-mls' || photoPath.startsWith('http')) return photoPath;
       const path = photoPath.replace(/^\/media\/listings\//, '');
-      return SUPABASE_URL + encodeURIComponent(path);
+      return SUPABASE_URL + path.split('/').map(encodeURIComponent).join('/');
     },
     formatPrice(price) {
       if (!price) return 'Price on request';
@@ -828,19 +543,9 @@ export default {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
         window.scrollTo({ top: 400, behavior: 'smooth' });
-        
-        // Trigger loading more if we're on the last page and have more listings
-        if (page === this.totalPages && this.hasMoreListings && !this.isLoadingMore) {
-          this.loadNextBatch();
-        }
       }
     }
   },
-  beforeUnmount() {
-    if (this.loadingIntervalId) {
-      clearInterval(this.loadingIntervalId);
-    }
-  }
 };
 </script>
 
@@ -1417,6 +1122,27 @@ export default {
     .hs-yacht-card:hover .hs-yacht-image img {
       transform: scale(1.12);
       opacity: 0.3;
+    }
+
+    .hs-sold-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      background: #c0392b;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 50px;
+      z-index: 2;
+      box-shadow: 0 2px 10px rgba(192,57,43,0.35);
+    }
+
+    .hs-price-sold {
+      color: #c0392b !important;
+      font-weight: 800;
     }
 
     /* View Details Overlay Button */
