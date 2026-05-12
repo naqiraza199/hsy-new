@@ -379,7 +379,7 @@ export default {
 
                 if (response.ok) {
                     this.showNotification(
-                        'Your booking request has been submitted successfully! We will confirm within 24 hours.', 
+                        'Your booking request has been submitted successfully! We will confirm within 24 hours.',
                         'success'
                     );
 

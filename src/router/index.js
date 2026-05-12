@@ -129,4 +129,10 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
+router.afterEach(() => {
+  if (typeof fbq !== 'undefined') {
+    fbq('track', 'PageView')
+  }
+})
+
 export default router

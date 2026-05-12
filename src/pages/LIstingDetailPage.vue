@@ -1545,7 +1545,7 @@ engines() { return this.listing?.metadata?.engines || null; },
 
                   if (response.ok) {
                       this.showNotification(
-                          'Your boat inquiry has been submitted successfully! Our team will contact you shortly.', 
+                          'Your boat inquiry has been submitted successfully! Our team will contact you shortly.',
                           'success'
                       );
                       this.closeBoatInquiryModal();
