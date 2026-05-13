@@ -10,6 +10,7 @@ const BROKERS_PATH = path.join(process.cwd(), 'public', 'data', 'brokers.json');
 const BLOGS_PATH = path.join(process.cwd(), 'public', 'data', 'blogs.json');
 const EVENTS_PATH = path.join(process.cwd(), 'public', 'data', 'events.json');
 const YACHT_MLS_PATH = path.join(process.cwd(), 'public', 'data', 'yacht-mls.json');
+const ITINERARIES_PATH = path.join(process.cwd(), 'public', 'data', 'itineraries.json');
 
 app.use(cors({
   origin: '*',
@@ -117,6 +118,26 @@ function saveYachtMls(yachtMls) {
     fs.mkdirSync(dir, { recursive: true });
   }
   fs.writeFileSync(YACHT_MLS_PATH, JSON.stringify(yachtMls, null, 2));
+}
+
+function loadItineraries() {
+  try {
+    if (fs.existsSync(ITINERARIES_PATH)) {
+      const data = fs.readFileSync(ITINERARIES_PATH, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Error loading itineraries:', error);
+  }
+  return [];
+}
+
+function saveItineraries(itineraries) {
+  const dir = path.dirname(ITINERARIES_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(ITINERARIES_PATH, JSON.stringify(itineraries, null, 2));
 }
 
 app.post('/api/listings', (req, res) => {
@@ -369,6 +390,56 @@ app.get('/api/yacht-mls', (req, res) => {
   }
 });
 
+app.post('/api/itineraries', (req, res) => {
+  try {
+    console.log('Received itineraries data type:', typeof req.body);
+    console.log('Is array:', Array.isArray(req.body));
+    
+    let newItineraries = req.body;
+
+    if (typeof newItineraries === 'object' && !Array.isArray(newItineraries)) {
+      const possibleArrays = [newItineraries.data, newItineraries.itineraries, newItineraries.items, newItineraries.results];
+      for (const arr of possibleArrays) {
+        if (Array.isArray(arr)) {
+          newItineraries = arr;
+          break;
+        }
+      }
+    }
+
+    if (!Array.isArray(newItineraries)) {
+      newItineraries = [newItineraries];
+    }
+
+    if (newItineraries.length > 0 && newItineraries[0] !== undefined && newItineraries[0] !== null) {
+      saveItineraries(newItineraries);
+
+      console.log(`Saved ${newItineraries.length} itineraries`);
+
+      res.json({
+        success: true,
+        message: `Replaced itineraries with ${newItineraries.length} new itineraries`,
+        total: newItineraries.length
+      });
+    } else {
+      res.json({ success: true, message: 'No data to save' });
+    }
+  } catch (error) {
+    console.error('Error saving itineraries:', error);
+    res.status(500).json({ error: 'Failed to save itineraries' });
+  }
+});
+
+app.get('/api/itineraries', (req, res) => {
+  try {
+    const itineraries = loadItineraries();
+    res.json(itineraries);
+  } catch (error) {
+    console.error('Error reading itineraries:', error);
+    res.status(500).json({ error: 'Failed to read itineraries' });
+  }
+});
+
 const DIST_PATH = path.join(process.cwd(), 'dist');
 
 app.use(express.static(DIST_PATH));
@@ -390,5 +461,7 @@ app.listen(PORT, () => {
   console.log(`  GET  /api/events - Get all events`);
   console.log(`  POST /api/yacht-mls - Add yacht-mls`);
   console.log(`  GET  /api/yacht-mls - Get all yacht-mls`);
+  console.log(`  POST /api/itineraries - Add itineraries`);
+  console.log(`  GET  /api/itineraries - Get all itineraries`);
   console.log(`Static files served from: ${DIST_PATH}`);
 });

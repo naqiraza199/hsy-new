@@ -614,6 +614,96 @@
 
   
 
+   <!-- Itineraries Section -->
+   <section v-if="matchingItineraries.length > 0" class="ls-itineraries-section">
+     <div class="hs-container">
+
+       <div class="ls-itin-section-header">
+         <div class="ls-itin-label-chip">
+           <i class="fas fa-compass"></i> Explore Local Waters
+         </div>
+         <h2 class="ls-itin-section-title">Day Charter Itineraries in {{ formatCityName(listingCity) }}</h2>
+         <p class="ls-itin-section-desc">Curated on-water experiences designed for these waters. Choose your adventure and we'll handle the rest.</p>
+       </div>
+
+       <div class="ls-itin-rows">
+         <div
+           v-for="(itinerary, index) in matchingItineraries"
+           :key="itinerary.id"
+           class="ls-itin-row"
+           :class="{ 'ls-itin-row-reverse': index % 2 !== 0 }"
+         >
+           <!-- Image Half -->
+           <div class="ls-itin-row-image">
+             <img
+               :src="getItineraryCoverImage(itinerary.cover_image_url)"
+               :alt="itinerary.title"
+               @error="$event.target.src = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&q=80'"
+             >
+             <div class="ls-itin-row-img-overlay"></div>
+             <!-- Number badge -->
+             <div class="ls-itin-row-number">{{ String(index + 1).padStart(2, '0') }}</div>
+             <!-- Badges -->
+             <div class="ls-itin-row-badges">
+               <span class="ls-itin-badge ls-itin-badge-diff" :style="{ background: getDifficultyColor(itinerary.difficulty) }">
+                 <i class="fas fa-signal"></i>
+                 {{ itinerary.difficulty ? itinerary.difficulty.charAt(0).toUpperCase() + itinerary.difficulty.slice(1) : 'All Levels' }}
+               </span>
+               <span class="ls-itin-badge ls-itin-badge-guests">
+                 <i class="fas fa-users"></i> {{ itinerary.min_guests }}–{{ itinerary.max_guests }} guests
+               </span>
+             </div>
+           </div>
+
+           <!-- Content Half -->
+           <div class="ls-itin-row-content">
+             <div class="ls-itin-row-meta">
+               <span class="ls-itin-meta-pill"><i class="fas fa-map-marker-alt"></i> {{ formatCityName(itinerary.city) }}</span>
+               <span class="ls-itin-meta-pill"><i class="fas fa-sun"></i> Day Charter</span>
+             </div>
+
+             <h3 class="ls-itin-row-title">{{ itinerary.title }}</h3>
+
+             <p class="ls-itin-row-desc">{{ itinerary.description }}</p>
+
+             <!-- Highlights -->
+             <div v-if="itinerary.highlights && itinerary.highlights.length" class="ls-itin-row-highlights">
+               <div class="ls-itin-highlights-label">Highlights</div>
+               <ul class="ls-itin-highlights-list">
+                 <li v-for="(h, hi) in itinerary.highlights" :key="hi">
+                   <span class="ls-itin-highlight-dot"></span>
+                   {{ h }}
+                 </li>
+               </ul>
+             </div>
+
+             <!-- Stats row -->
+             <div class="ls-itin-row-stats">
+               <div class="ls-itin-stat">
+                 <i class="fas fa-clock"></i>
+                 <span>Full Day</span>
+               </div>
+               <div class="ls-itin-stat">
+                 <i class="fas fa-users"></i>
+                 <span>{{ itinerary.min_guests }}–{{ itinerary.max_guests }} guests</span>
+               </div>
+               <div class="ls-itin-stat" v-if="itinerary.difficulty">
+                 <i class="fas fa-signal"></i>
+                 <span>{{ itinerary.difficulty.charAt(0).toUpperCase() + itinerary.difficulty.slice(1) }}</span>
+               </div>
+             </div>
+
+             <button @click="handleBookNow" class="ls-itin-row-btn">
+               <span>Book This Charter</span>
+               <i class="fas fa-arrow-right"></i>
+             </button>
+           </div>
+         </div>
+       </div>
+
+     </div>
+   </section>
+
    <section class="ls-similar-section">
      <div class="hs-container">
        <div class="ls-section-header">
@@ -896,6 +986,7 @@ export default {
                  loading: true,
                  listingsData: [],
                  brokersData: [],
+                 itinerariesData: [],
                  currentSlideIndex: 0,
                  totalSlides: 6,
                  headerImageFallback: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=1920&q=80',
@@ -1108,6 +1199,30 @@ engines() { return this.listing?.metadata?.engines || null; },
                   return this.listingBroker.email;
               }
               return 'Sales@highseasyachting.com';
+          },
+          listingCity() {
+              return (this.listing?.metadata?.city || this.listing?.city || '').toLowerCase().trim();
+          },
+          matchingItineraries() {
+              if (!this.listing || !this.listingCity) return [];
+              let records = [];
+              if (this.itinerariesData.length > 0 && this.itinerariesData[0].records) {
+                  records = this.itinerariesData[0].records;
+              }
+              return records
+                  .filter(it =>
+                      it.is_published &&
+                      it.category === 'day_charter' &&
+                      it.city &&
+                      it.city.toLowerCase().trim() === this.listingCity
+                  )
+                  .sort((a, b) => {
+                      const getHours = it => {
+                          const match = (it.charter_duration || '').match(/(\d+(\.\d+)?)/);
+                          return match ? parseFloat(match[1]) : Infinity;
+                      };
+                      return getHours(a) - getHours(b);
+                  });
           }
     },
     methods: {
@@ -1306,19 +1421,34 @@ engines() { return this.listing?.metadata?.engines || null; },
              const path = imagePath.replace(/^\/media\/listings\//, '');
              return SUPABASE_URL + encodeURI(path);
          },
+         getItineraryCoverImage(url) {
+             const fallback = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80';
+             if (!url) return fallback;
+             if (url.startsWith('http')) return url;
+             const SUPABASE_GENERAL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/general/';
+             const path = url.replace(/^\/media\/general\//, '');
+             return SUPABASE_GENERAL + encodeURI(path);
+         },
+         getDifficultyColor(difficulty) {
+             const map = { easy: '#27ae60', moderate: '#f39c12', hard: '#e74c3c' };
+             return map[(difficulty || '').toLowerCase()] || '#2563eb';
+         },
           async loadListing() {
             this.loading = true;
             try {
                 const slug = this.$route.params.slug;
 
-                const [listingsResp, brokersResp] = await Promise.all([
+                const [listingsResp, brokersResp, itinerariesResp] = await Promise.all([
                     fetch('/data/listings.json'),
-                    fetch('/data/broker.json')
+                    fetch('/data/broker.json'),
+                    fetch('/data/itineraries.json')
                 ]);
                 const listingsDataRaw = await listingsResp.json();
                 const brokersDataRaw = await brokersResp.json();
+                const itinerariesDataRaw = await itinerariesResp.json();
                 this.listingsData = Array.isArray(listingsDataRaw) ? listingsDataRaw : [listingsDataRaw];
                 this.brokersData = Array.isArray(brokersDataRaw) ? brokersDataRaw : [brokersDataRaw];
+                this.itinerariesData = Array.isArray(itinerariesDataRaw) ? itinerariesDataRaw : [itinerariesDataRaw];
 
                 let records = [];
                 if (this.listingsData.length > 0 && this.listingsData[0].records) {
@@ -5054,6 +5184,420 @@ engines() { return this.listing?.metadata?.engines || null; },
 
   .ls-action-btn i {
     font-size: 1.1rem;
+  }
+}
+
+/* ============================================
+   ITINERARIES SECTION — SPLIT ROW LAYOUT
+============================================ */
+.ls-itineraries-section {
+  padding: 96px 0 88px;
+  background: linear-gradient(160deg, #f0f7f4 0%, #eaf5ef 50%, #f6faf7 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.ls-itineraries-section::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: -100px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(26, 77, 53, 0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ls-itineraries-section::after {
+  content: '';
+  position: absolute;
+  bottom: -80px;
+  right: -80px;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(26, 77, 53, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Section Header */
+.ls-itin-section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+.ls-itin-label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(26, 77, 53, 0.1);
+  color: #1a4d35;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  border-radius: 50px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(26, 77, 53, 0.18);
+}
+
+.ls-itin-label-chip i { font-size: 0.82rem; }
+
+.ls-itin-section-title {
+  font-size: clamp(1.9rem, 3.8vw, 2.7rem);
+  font-weight: 800;
+  color: #102012;
+  line-height: 1.2;
+  margin-bottom: 14px;
+}
+
+.ls-itin-section-desc {
+  font-size: 1.02rem;
+  color: #546a5c;
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.72;
+}
+
+/* Rows wrapper */
+.ls-itin-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Single Row */
+.ls-itin-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-radius: 24px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 6px 32px rgba(16, 32, 18, 0.08), 0 1px 4px rgba(16, 32, 18, 0.04);
+  min-height: 420px;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.ls-itin-row:hover {
+  box-shadow: 0 20px 56px rgba(16, 32, 18, 0.13), 0 4px 12px rgba(16, 32, 18, 0.07);
+  transform: translateY(-4px);
+}
+
+/* Reversed row — image on right */
+.ls-itin-row-reverse {
+  direction: rtl;
+}
+.ls-itin-row-reverse > * {
+  direction: ltr;
+}
+
+/* Image Half */
+.ls-itin-row-image {
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+}
+
+.ls-itin-row-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.55s ease;
+}
+
+.ls-itin-row:hover .ls-itin-row-image img {
+  transform: scale(1.05);
+}
+
+.ls-itin-row-img-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(10, 28, 16, 0.35) 0%,
+    rgba(10, 28, 16, 0.1) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Big index number on image */
+.ls-itin-row-number {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  font-size: 3.6rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.18);
+  line-height: 1;
+  letter-spacing: -2px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ls-itin-row-reverse .ls-itin-row-number {
+  left: auto;
+  right: 24px;
+}
+
+/* Badges on image */
+.ls-itin-row-badges {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ls-itin-row-reverse .ls-itin-row-badges {
+  left: auto;
+  right: 20px;
+  justify-content: flex-end;
+}
+
+.ls-itin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 6px 13px;
+  border-radius: 50px;
+  color: #fff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.ls-itin-badge-guests {
+  background: rgba(0, 0, 0, 0.42);
+}
+
+/* Content Half */
+.ls-itin-row-content {
+  padding: 48px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+}
+
+/* Meta pills */
+.ls-itin-row-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ls-itin-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #1a4d35;
+  background: rgba(26, 77, 53, 0.09);
+  border: 1px solid rgba(26, 77, 53, 0.16);
+  padding: 5px 14px;
+  border-radius: 50px;
+}
+
+.ls-itin-meta-pill i { font-size: 0.68rem; }
+
+/* Title */
+.ls-itin-row-title {
+  font-size: clamp(1.3rem, 2vw, 1.7rem);
+  font-weight: 800;
+  color: #102012;
+  line-height: 1.25;
+  margin: 0;
+}
+
+/* Description */
+.ls-itin-row-desc {
+  font-size: 0.95rem;
+  color: #4a6254;
+  line-height: 1.75;
+  margin: 0;
+}
+
+/* Highlights */
+.ls-itin-row-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ls-itin-highlights-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #1a4d35;
+  opacity: 0.7;
+}
+
+.ls-itin-highlights-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ls-itin-highlights-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2e4a38;
+}
+
+.ls-itin-highlight-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1a4d35, #27ae60);
+  flex-shrink: 0;
+}
+
+/* Stats row */
+.ls-itin-row-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 16px 0;
+  border-top: 1px solid rgba(16, 32, 18, 0.07);
+  border-bottom: 1px solid rgba(16, 32, 18, 0.07);
+}
+
+.ls-itin-stat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #3a5544;
+}
+
+.ls-itin-stat i {
+  font-size: 0.82rem;
+  color: #1a4d35;
+  opacity: 0.75;
+}
+
+/* CTA button */
+.ls-itin-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  background: linear-gradient(135deg, #1a4d35 0%, #2d7a55 100%);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 15px 32px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+  margin-top: 4px;
+}
+
+.ls-itin-row-btn i {
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.ls-itin-row-btn:hover {
+  background: linear-gradient(135deg, #153d2a 0%, #246446 100%);
+  box-shadow: 0 8px 28px rgba(26, 77, 53, 0.38);
+  transform: translateY(-2px);
+}
+
+.ls-itin-row-btn:hover i {
+  transform: translateX(4px);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .ls-itin-row,
+  .ls-itin-row-reverse {
+    grid-template-columns: 1fr;
+    direction: ltr;
+    min-height: auto;
+  }
+
+  .ls-itin-row-image {
+    min-height: 280px;
+  }
+
+  .ls-itin-row-content {
+    padding: 36px 32px 40px;
+    gap: 16px;
+  }
+
+  .ls-itin-row-number {
+    font-size: 2.8rem;
+    top: 16px;
+    left: 18px;
+  }
+
+  .ls-itin-row-reverse .ls-itin-row-number {
+    left: 18px;
+    right: auto;
+  }
+
+  .ls-itin-row-reverse .ls-itin-row-badges {
+    left: 20px;
+    right: auto;
+    justify-content: flex-start;
+  }
+
+  .ls-itin-row-btn {
+    align-self: stretch;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .ls-itineraries-section {
+    padding: 64px 0 60px;
+  }
+
+  .ls-itin-section-header {
+    margin-bottom: 44px;
+  }
+
+  .ls-itin-rows {
+    gap: 24px;
+  }
+
+  .ls-itin-row {
+    border-radius: 18px;
+  }
+
+  .ls-itin-row-image {
+    min-height: 230px;
+  }
+
+  .ls-itin-row-content {
+    padding: 28px 24px 32px;
+  }
+
+  .ls-itin-row-stats {
+    gap: 16px;
+  }
+
+  .ls-itin-section-title {
+    font-size: 1.65rem;
   }
 }
 </style>
