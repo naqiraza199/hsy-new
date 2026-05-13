@@ -99,6 +99,11 @@
         <!-- Bottom Copyright -->
         <div class="hs-footer-bottom">
             <p>&copy; 2026 High Seas Yachting. All Rights Reserved.</p>
+            <div class="hs-footer-legal-links">
+                <router-link to="/terms-conditions">Terms &amp; Conditions</router-link>
+                <span class="hs-footer-legal-divider">|</span>
+                <router-link to="/privacy-policy">Privacy Policy</router-link>
+            </div>
         </div>
     </div>
 </footer>
@@ -356,6 +361,27 @@ a[target="_blank"][rel="noreferrer"] {
     text-align: center;
     color: #6e7570;
     font-size: 0.9rem;
+}
+.hs-footer-legal-links {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.hs-footer-legal-links a {
+    color: #8aaa8e;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+}
+.hs-footer-legal-links a:hover {
+    color: #d4a853;
+}
+.hs-footer-legal-divider {
+    color: #3d5240;
+    font-size: 0.8rem;
 }
 
 /* Responsive */

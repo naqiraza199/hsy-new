@@ -174,7 +174,8 @@ export default {
         },
         getListingSlug(listing) {
             if (!listing) return '';
-            return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-day-charter`.toLowerCase()
+            const city = listing.city || '';
+            return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-${city}-day-charter`.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '');
         },

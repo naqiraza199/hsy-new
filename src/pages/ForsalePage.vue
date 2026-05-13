@@ -330,7 +330,8 @@ export default {
     getListingSlug() {
       return (listing) => {
         if (!listing) return '';
-        return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-for-sale`.toLowerCase()
+        const city = listing.city || '';
+        return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-${city}-for-sale`.toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/(^-|-$)/g, '');
       };

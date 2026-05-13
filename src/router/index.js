@@ -16,6 +16,8 @@ const EventDetailPage = () => import('../pages/EventDetailPage.vue')
 const ListingDetailPage = () => import('../pages/LIstingDetailPage.vue')
 const DestinationListingsPage = () => import('../pages/DestinationListingsPage.vue')
 const DayCharterBookingPage = () => import('../pages/DayCharterBookingPage.vue')
+const TermsConditionsPage = () => import('../pages/TermsConditionsPage.vue')
+const PrivacyPolicyPage = () => import('../pages/PrivacyPolicyPage.vue')
 
 const routes = [
   {
@@ -113,6 +115,18 @@ const routes = [
     name: 'DayCharterBooking',
     component: DayCharterBookingPage,
     meta: { title: 'Day Charter Booking - Luxury Yacht Brokers Fort Lauderdale & Miami' }
+  },
+  {
+    path: '/terms-conditions',
+    name: 'TermsConditions',
+    component: TermsConditionsPage,
+    meta: { title: 'Terms & Conditions - High Seas Yachting' }
+  },
+  {
+    path: '/privacy-policy',
+    name: 'PrivacyPolicy',
+    component: PrivacyPolicyPage,
+    meta: { title: 'Privacy Policy - High Seas Yachting' }
   }
 ]
 

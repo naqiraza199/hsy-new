@@ -428,7 +428,8 @@ const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object
             },
             getListingSlug(listing) {
                 if (!listing) return '';
-                return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-term-charter`.toLowerCase()
+                const city = listing.city || '';
+                return `${listing.year}-${listing.manufacturer}-${listing.yachtName}-${city}-term-charter`.toLowerCase()
                     .replace(/[^a-z0-9]+/g, '-')
                     .replace(/(^-|-$)/g, '');
             },

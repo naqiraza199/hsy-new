@@ -582,7 +582,7 @@ async function loadAllData() {
 
 function loadFeaturedListings(records) {
     featuredListings.value = records
-        .filter(item => item && item.type === 'forsale')
+        .filter(item => item && item.type === 'forsale' && item.sale_status !== 'sold')
         .slice(0, 6)
         .map(listing => ({
             id: listing.id,

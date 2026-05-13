@@ -598,7 +598,7 @@
                    <i class="fas fa-calendar-check"></i> Book Now
                  </button>
                   <a :href="'mailto:' + contactEmailAddress" class="ls-btn-secondary">
-                    <i class="fas fa-envelope"></i> Book a Showing
+                    <i class="fas fa-envelope"></i> Email Us
                   </a>
                  <a :href="'tel:' + contactPhoneNumber" class="ls-btn-secondary">
                    <i class="fas fa-phone"></i> Call Now
@@ -737,7 +737,7 @@
                <div class="ls-prequalify-form-group">
                  <label for="pq-phone">Phone Number</label>
                  <input 
-                   type="tel" 
+                    type="tel" 
                    id="pq-phone" 
                    v-model="preQualifyForm.phone" 
                    placeholder="Enter your phone number"
@@ -882,11 +882,6 @@
 <script>
 import FooterSection from '../components/FooterSection.vue';
 import NavbarSection from '../components/NavbarSection.vue';
-import listingsDataRaw from '../../listings.json';
-import brokersDataRaw from '../../broker.json';
-
-const listingsData = Array.isArray(listingsDataRaw) ? listingsDataRaw : [listingsDataRaw];
-const brokersData = Array.isArray(brokersDataRaw) ? brokersDataRaw : [brokersDataRaw];
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
 
 export default {
@@ -899,6 +894,8 @@ export default {
              return {
                  listing: null,
                  loading: true,
+                 listingsData: [],
+                 brokersData: [],
                  currentSlideIndex: 0,
                  totalSlides: 6,
                  headerImageFallback: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=1920&q=80',
@@ -954,7 +951,7 @@ export default {
         listingBroker() {
             if (!this.listing?.broker_id) return null;
             let records = [];
-            if (brokersData.length > 0 && brokersData[0].records) records = brokersData[0].records;
+            if (this.brokersData.length > 0 && this.brokersData[0].records) records = this.brokersData[0].records;
             return records.find(b => b.id === this.listing.broker_id) || null;
         },
 listingPhotos() {
@@ -975,7 +972,7 @@ listingPhotos() {
             return this.listing.metadata.photos.map(photo => {
                 // Remove /media/listings/ prefix to get the path for Supabase storage
                 const path = photo.replace(/^\/media\/listings\//, '');
-                return SUPABASE_URL + encodeURIComponent(path);
+                return SUPABASE_URL + encodeURI(path);
             });
         },
         formattedPrice() {
@@ -1056,7 +1053,7 @@ engines() { return this.listing?.metadata?.engines || null; },
         hasValidKeyFeatures() {
             const features = this.listing?.metadata?.key_features;
             if (!features || features.length === 0) return false;
-            return features.every(f => f.title.trim() && f.description.trim());
+            return features.every(f => f.title?.trim() && f.description?.trim());
         },
           headerBackgroundImage() {
               const fallback = 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=1920&q=80';
@@ -1071,7 +1068,7 @@ engines() { return this.listing?.metadata?.engines || null; },
          brokerListings() {
              if (!this.listing) return [];
              let records = [];
-             if (listingsData.length > 0 && listingsData[0].records) records = listingsData[0].records;
+             if (this.listingsData.length > 0 && this.listingsData[0].records) records = this.listingsData[0].records;
              
              const currentCity = this.listing?.metadata?.city || this.listing?.city || '';
              const currentType = this.listing?.type || '';
@@ -1249,13 +1246,11 @@ engines() { return this.listing?.metadata?.engines || null; },
          },
         generateSlug(listing) {
             if (!listing) return '';
-            let suffix = '-for-sale';
-            if (listing.type === 'daycharter') {
-                suffix = '-day-charter';
-            } else if (listing.type === 'termcharter') {
-                suffix = '-term-charter';
-            }
-            return `${listing.year}-${listing.manufacturer}-${listing.yacht_name}${suffix}`.toLowerCase()
+            const city = listing.metadata?.city || listing.city || '';
+            let typeSuffix = 'for-sale';
+            if (listing.type === 'daycharter') typeSuffix = 'day-charter';
+            else if (listing.type === 'termcharter') typeSuffix = 'term-charter';
+            return `${listing.year}-${listing.manufacturer}-${listing.yacht_name}-${city}-${typeSuffix}`.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '');
         },
@@ -1275,7 +1270,7 @@ engines() { return this.listing?.metadata?.engines || null; },
             // For listings.json - Supabase storage paths
             // Use the full path after /media/listings/ to construct the Supabase URL
             const path = firstPhoto.replace(/^\/media\/listings\//, '');
-            return SUPABASE_URL + encodeURIComponent(path);
+            return SUPABASE_URL + encodeURI(path);
         },
          formatListingPrice(price) {
              if (!price) return 'Price on request';
@@ -1307,18 +1302,27 @@ engines() { return this.listing?.metadata?.engines || null; },
          },
          getKeyFeatureImage(imagePath) {
              if (!imagePath) return 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?w=400&q=80';
-             if (imagePath.startsWith('http')) return imagePath;
+             if (imagePath.startsWith('http') || imagePath.startsWith('data:')) return imagePath;
              const path = imagePath.replace(/^\/media\/listings\//, '');
-             return SUPABASE_URL + encodeURIComponent(path);
+             return SUPABASE_URL + encodeURI(path);
          },
           async loadListing() {
             this.loading = true;
             try {
                 const slug = this.$route.params.slug;
-                
+
+                const [listingsResp, brokersResp] = await Promise.all([
+                    fetch('/data/listings.json'),
+                    fetch('/data/broker.json')
+                ]);
+                const listingsDataRaw = await listingsResp.json();
+                const brokersDataRaw = await brokersResp.json();
+                this.listingsData = Array.isArray(listingsDataRaw) ? listingsDataRaw : [listingsDataRaw];
+                this.brokersData = Array.isArray(brokersDataRaw) ? brokersDataRaw : [brokersDataRaw];
+
                 let records = [];
-                if (listingsData.length > 0 && listingsData[0].records) {
-                    records = listingsData[0].records;
+                if (this.listingsData.length > 0 && this.listingsData[0].records) {
+                    records = this.listingsData[0].records;
                 }
                 
                 this.listing = records.find(item => item.slug === slug);
