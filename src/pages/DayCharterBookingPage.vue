@@ -122,9 +122,66 @@
                  </template>
                </select>
             </div>
-            <div class="form-group">
+            <div class="form-group custom-date-wrapper" ref="dateWrapper">
               <label class="required">Booking Date</label>
-              <input type="date" v-model="formData.booking_date" name="booking_date" required>
+              <div
+                class="date-input-trigger"
+                :class="{ active: showCalendar }"
+                @click="toggleCalendar"
+              >
+                <i class="fas fa-calendar-alt date-icon"></i>
+                <span class="date-display" :class="{ placeholder: !formData.booking_date }">
+                  {{ formData.booking_date ? formatDisplayDate(formData.booking_date) : 'Select booking date' }}
+                </span>
+                <i class="fas fa-chevron-down date-chevron" :class="{ rotated: showCalendar }"></i>
+              </div>
+              <input type="hidden" v-model="formData.booking_date" name="booking_date">
+
+              <div class="calendar-dropdown" v-if="showCalendar">
+                <div class="calendar-header">
+                  <button type="button" class="cal-nav-btn" @click="prevMonth">
+                    <i class="fas fa-chevron-left"></i>
+                  </button>
+                  <span class="cal-month-year">{{ calendarMonthName }} {{ calendarYear }}</span>
+                  <button type="button" class="cal-nav-btn" @click="nextMonth">
+                    <i class="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+
+                <div class="cal-avail-banner" v-if="listing && (listing.available_from || listing.available_to)">
+                  <i class="fas fa-calendar-check"></i>
+                  <span>
+                    Available:
+                    <strong>{{ listing.available_from ? formatDisplayDate(listing.available_from) : '—' }}</strong>
+                    <template v-if="listing.available_from && listing.available_to"> – </template>
+                    <strong>{{ listing.available_to ? formatDisplayDate(listing.available_to) : '—' }}</strong>
+                  </span>
+                </div>
+
+                <div class="calendar-weekdays">
+                  <span v-for="d in weekDays" :key="d">{{ d }}</span>
+                </div>
+
+                <div class="calendar-days">
+                  <button
+                    v-for="(day, idx) in calendarDays"
+                    :key="idx"
+                    type="button"
+                    class="cal-day"
+                    :class="{
+                      'cal-day--empty': !day,
+                      'cal-day--disabled': day && !isDateAvailable(day),
+                      'cal-day--selected': day && isDateSelected(day),
+                      'cal-day--today': day && isToday(day),
+                      'cal-day--available': day && isDateAvailable(day) && !isDateSelected(day)
+                    }"
+                    :disabled="!day || !isDateAvailable(day)"
+                    @click="day && isDateAvailable(day) && selectDate(day)"
+                  >
+                    <span v-if="day">{{ day.getDate() }}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -221,6 +278,9 @@ export default {
             listing: null,
             loading: true,
             submitting: false,
+            showCalendar: false,
+            calendarYear: new Date().getFullYear(),
+            calendarMonth: new Date().getMonth(),
             notification: {
                 show: false,
                 message: '',
@@ -276,6 +336,31 @@ export default {
                  return `${this.listing.manufacturer} • Term Charter`;
              }
              return `${this.listing.manufacturer} • Day Charter`;
+         },
+         availableFrom() {
+             if (!this.listing?.available_from) return null;
+             return new Date(this.listing.available_from + 'T00:00:00');
+         },
+         availableTo() {
+             if (!this.listing?.available_to) return null;
+             return new Date(this.listing.available_to + 'T00:00:00');
+         },
+         weekDays() {
+             return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+         },
+         calendarMonthName() {
+             return new Date(this.calendarYear, this.calendarMonth, 1)
+                 .toLocaleString('default', { month: 'long' });
+         },
+         calendarDays() {
+             const firstDay = new Date(this.calendarYear, this.calendarMonth, 1).getDay();
+             const daysInMonth = new Date(this.calendarYear, this.calendarMonth + 1, 0).getDate();
+             const days = [];
+             for (let i = 0; i < firstDay; i++) days.push(null);
+             for (let d = 1; d <= daysInMonth; d++) {
+                 days.push(new Date(this.calendarYear, this.calendarMonth, d));
+             }
+             return days;
          }
      },
     watch: {
@@ -480,10 +565,80 @@ export default {
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '');
+        },
+        toggleCalendar() {
+            this.showCalendar = !this.showCalendar;
+            if (this.showCalendar) {
+                if (this.formData.booking_date) {
+                    const d = new Date(this.formData.booking_date + 'T00:00:00');
+                    this.calendarYear = d.getFullYear();
+                    this.calendarMonth = d.getMonth();
+                } else if (this.availableFrom) {
+                    const today = new Date();
+                    const start = this.availableFrom > today ? this.availableFrom : today;
+                    this.calendarYear = start.getFullYear();
+                    this.calendarMonth = start.getMonth();
+                }
+            }
+        },
+        prevMonth() {
+            if (this.calendarMonth === 0) { this.calendarMonth = 11; this.calendarYear--; }
+            else { this.calendarMonth--; }
+        },
+        nextMonth() {
+            if (this.calendarMonth === 11) { this.calendarMonth = 0; this.calendarYear++; }
+            else { this.calendarMonth++; }
+        },
+        isDateAvailable(date) {
+            if (!date) return false;
+            const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            if (this.availableFrom) {
+                const from = new Date(this.availableFrom.getFullYear(), this.availableFrom.getMonth(), this.availableFrom.getDate());
+                if (d < from) return false;
+            }
+            if (this.availableTo) {
+                const to = new Date(this.availableTo.getFullYear(), this.availableTo.getMonth(), this.availableTo.getDate());
+                if (d > to) return false;
+            }
+            return true;
+        },
+        isDateSelected(date) {
+            if (!date || !this.formData.booking_date) return false;
+            const sel = new Date(this.formData.booking_date + 'T00:00:00');
+            return date.getFullYear() === sel.getFullYear() &&
+                   date.getMonth() === sel.getMonth() &&
+                   date.getDate() === sel.getDate();
+        },
+        isToday(date) {
+            const today = new Date();
+            return date.getFullYear() === today.getFullYear() &&
+                   date.getMonth() === today.getMonth() &&
+                   date.getDate() === today.getDate();
+        },
+        selectDate(date) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            this.formData.booking_date = `${yyyy}-${mm}-${dd}`;
+            this.showCalendar = false;
+        },
+        formatDisplayDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr + 'T00:00:00');
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        },
+        handleOutsideClick(event) {
+            if (this.$refs.dateWrapper && !this.$refs.dateWrapper.contains(event.target)) {
+                this.showCalendar = false;
+            }
         }
     },
     mounted() {
         this.loadListing();
+        document.addEventListener('click', this.handleOutsideClick);
+    },
+    beforeUnmount() {
+        document.removeEventListener('click', this.handleOutsideClick);
     }
 }
 </script>
@@ -999,7 +1154,6 @@ export default {
       border-radius: 32px;
       box-shadow: 0 18px 45px rgba(15, 40, 24, 0.14);
       border: 1px solid rgba(15, 40, 24, 0.1);
-      overflow: hidden;
       animation: fadeInUp 0.6s ease-out 0.3s both;
     }
 
@@ -1007,6 +1161,7 @@ export default {
       padding: 32px 32px 24px;
       background: linear-gradient(135deg, #f8faf6 0%, rgba(53, 90, 50, 0.04) 100%);
       border-bottom: 1px solid rgba(15, 40, 24, 0.08);
+      border-radius: 32px 32px 0 0;
     }
 
     .form-header h2 {
@@ -1062,7 +1217,7 @@ export default {
       color: #ef4444;
     }
 
-    input,
+    input:not([type="hidden"]),
     select,
     textarea {
       width: 100%;
@@ -1076,7 +1231,7 @@ export default {
       color: #102012;
     }
 
-    input:focus,
+    input:not([type="hidden"]):focus,
     select:focus,
     textarea:focus {
       outline: none;
@@ -1322,6 +1477,10 @@ export default {
      }
     
      @media (max-width: 768px) {
+
+        .calendar-dropdown {
+       width: 100% !important;
+     }
        .main-content {
          gap: 24px;
          margin: 50px auto 0;
@@ -1491,6 +1650,7 @@ export default {
 
        .form-header {
          padding: 16px 16px 12px;
+         border-radius: 16px 16px 0 0;
        }
 
        .form-header h2 {
@@ -1523,7 +1683,7 @@ export default {
          margin-bottom: 4px;
        }
 
-       input,
+       input:not([type="hidden"]),
        select,
        textarea {
          padding: 10px 12px;
@@ -1557,8 +1717,220 @@ export default {
       .notification-message {
         font-size: 0.8rem;
       }
-    
-    
+
+     /* ===================== CUSTOM DATE PICKER ===================== */
+     .custom-date-wrapper {
+       position: relative;
+     }
+
+     .date-input-trigger {
+       width: 100%;
+       padding: 16px 18px;
+       border: 2px solid #e8ebe7;
+       border-radius: 12px;
+       font-size: 1rem;
+       font-family: 'Poppins', sans-serif;
+       background: #ffffff;
+       color: #102012;
+       cursor: pointer;
+       display: flex;
+       align-items: center;
+       gap: 12px;
+       transition: all 0.3s ease;
+       user-select: none;
+     }
+
+     .date-input-trigger:hover,
+     .date-input-trigger.active {
+       border-color: #355a32;
+       box-shadow: 0 0 0 4px rgba(65, 107, 60, 0.1);
+     }
+
+     .date-icon {
+       color: #355a32;
+       font-size: 1.05rem;
+       flex-shrink: 0;
+     }
+
+     .date-display {
+       flex: 1;
+       font-weight: 500;
+       color: #102012;
+     }
+
+     .date-display.placeholder {
+       color: #a8a8a8;
+       font-weight: 400;
+     }
+
+     .date-chevron {
+       color: #5f6d60;
+       font-size: 0.8rem;
+       transition: transform 0.3s ease;
+       flex-shrink: 0;
+     }
+
+     .date-chevron.rotated {
+       transform: rotate(180deg);
+     }
+
+     .calendar-dropdown {
+       position: absolute;
+       top: calc(100% + 8px);
+       left: 0;
+       right: 0;
+       background: #ffffff;
+       border-radius: 20px;
+       box-shadow: 0 24px 64px rgba(15, 40, 24, 0.18), 0 4px 16px rgba(15, 40, 24, 0.08);
+       border: 1px solid rgba(53, 90, 50, 0.12);
+       z-index: 1000;
+       overflow: hidden;
+       animation: calDropIn 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+       width: 110%;
+     }
+
+     @keyframes calDropIn {
+       from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+       to   { opacity: 1; transform: translateY(0) scale(1); }
+     }
+
+     .calendar-header {
+       display: flex;
+       align-items: center;
+       justify-content: space-between;
+       padding: 18px 20px 14px;
+       background: linear-gradient(135deg, #1a3a2a 0%, #2d5a45 100%);
+     }
+
+     .cal-nav-btn {
+       background: rgba(255,255,255,0.14);
+       border: 1px solid rgba(255,255,255,0.18);
+       color: white;
+       width: 32px;
+       height: 32px;
+       border-radius: 9px;
+       cursor: pointer;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       font-size: 0.78rem;
+       transition: all 0.2s ease;
+       flex-shrink: 0;
+     }
+
+     .cal-nav-btn:hover {
+       background: rgba(255,255,255,0.26);
+       transform: scale(1.08);
+     }
+
+     .cal-month-year {
+       color: #ffffff;
+       font-weight: 700;
+       font-size: 0.98rem;
+       letter-spacing: 0.03em;
+     }
+
+     .cal-avail-banner {
+       display: flex;
+       align-items: center;
+       gap: 8px;
+       padding: 8px 20px;
+       background: linear-gradient(90deg, rgba(212,168,83,0.12) 0%, rgba(212,168,83,0.06) 100%);
+       border-bottom: 1px solid rgba(212,168,83,0.22);
+       font-size: 0.78rem;
+       color: #7a5c10;
+       font-weight: 500;
+     }
+
+     .cal-avail-banner i {
+       color: #d4a853;
+       font-size: 0.8rem;
+       flex-shrink: 0;
+     }
+
+     .cal-avail-banner strong {
+       font-weight: 700;
+       color: #5e4309;
+     }
+
+     .calendar-weekdays {
+       display: grid;
+       grid-template-columns: repeat(7, 1fr);
+       padding: 12px 16px 2px;
+       gap: 2px;
+     }
+
+     .calendar-weekdays span {
+       text-align: center;
+       font-size: 0.72rem;
+       font-weight: 700;
+       color: #8fa08e;
+       text-transform: uppercase;
+       letter-spacing: 0.06em;
+       padding: 4px 0;
+     }
+
+     .calendar-days {
+       display: grid;
+       grid-template-columns: repeat(7, 1fr);
+       gap: 3px;
+       padding: 4px 16px 18px;
+       justify-items: center;
+     }
+
+     .cal-day {
+       width: 38px;
+       height: 38px;
+       border: none;
+       background: transparent;
+       border-radius: 10px;
+       cursor: pointer;
+       font-size: 0.88rem;
+       font-family: 'Poppins', sans-serif;
+       font-weight: 500;
+       color: #1a3a2a;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       transition: all 0.18s ease;
+     }
+
+     .cal-day--empty {
+       pointer-events: none;
+     }
+
+     .cal-day--available:hover {
+       background: rgba(53, 90, 50, 0.1);
+       color: #1a3a2a;
+       transform: scale(1.1);
+     }
+
+     .cal-day--disabled {
+       color: #d0d8d0;
+       cursor: not-allowed;
+       font-weight: 400;
+     }
+
+     .cal-day--today:not(.cal-day--selected) {
+       background: rgba(212, 168, 83, 0.14);
+       color: #8b6914;
+       font-weight: 700;
+       border: 1.5px solid rgba(212, 168, 83, 0.45);
+     }
+
+     .cal-day--selected {
+       background: linear-gradient(135deg, #1a3a2a, #2d5a45) !important;
+       color: #ffffff !important;
+       font-weight: 700;
+       box-shadow: 0 4px 14px rgba(26, 58, 42, 0.38);
+       transform: scale(1.1);
+     }
+
+     .cal-day--selected:hover {
+       transform: scale(1.14);
+       box-shadow: 0 6px 18px rgba(26, 58, 42, 0.44);
+     }
+
      @media (max-width: 360px) {
        .page-header {
          min-height: 230px;

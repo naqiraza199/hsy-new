@@ -573,10 +573,15 @@
 
         
       </div>
-       <!-- Key Features Slider -->
-                   <div v-if="hasValidKeyFeatures" class="ls-key-features">
-                   <h3 class="ls-section-subtitle">Key Features</h3>
-                   <div class="ls-key-features-slider">
+                   <!-- Mobile Book Now Button (only for daycharter and mobile) -->
+                   <div v-if="listing.type === 'daycharter' && isMobile" class="mobile-book-now">
+                     <button @click="handleBookNow" class="ls-btn-primary">Book Now</button>
+                   </div>
+
+                   <!-- Key Features Grid -->
+                    <div v-if="hasValidKeyFeatures" class="ls-key-features">
+                    <h3 class="ls-section-subtitle">Key Features</h3>
+                    <div class="ls-key-features-grid">
                      <div 
                        class="ls-key-feature-card" 
                        v-for="(feature, index) in listing.metadata.key_features" 
@@ -678,8 +683,8 @@
 
   
 
-   <!-- Itineraries Section -->
-   <section v-if="matchingItineraries.length > 0" class="ls-itineraries-section">
+    <!-- Itineraries Section -->
+    <section v-if="matchingItineraries.length > 0 && listing.type === 'daycharter'" class="ls-itineraries-section">
      <div class="hs-container">
 
        <div class="ls-itin-section-header">
@@ -1088,14 +1093,15 @@ export default {
                      loanTerm: 0,
                      monthlyPayment: 0
                  },
-                    notification: {
-                        show: false,
-                        message: '',
-                        type: 'success'
-                    },
-                    inquirySubmitting: false,
+                     notification: {
+                         show: false,
+                         message: '',
+                         type: 'success'
+                     },
+                     inquirySubmitting: false,
 
-                   inquiryFromCalculator: false
+                    inquiryFromCalculator: false,
+                    isMobile: false
              };
         },
     computed: {
@@ -1754,13 +1760,16 @@ engines() { return this.listing?.metadata?.engines || null; },
                       'Unable to connect to the inquiry service. Please check your connection and try again.', 
                       'error'
                   );
-               } finally {
-                   this.inquirySubmitting = false;
-               }
-           },
+                  } finally {
+                    this.inquirySubmitting = false;
+                }
+            },
 
+            checkMobile() {
+                this.isMobile = window.innerWidth <= 768;
+            },
 
-    },
+     },
     watch: {
         '$route.params.slug'() {
             this.loadListing();
@@ -1768,10 +1777,13 @@ engines() { return this.listing?.metadata?.engines || null; },
     },
     mounted() {
         this.loadListing();
+        this.checkMobile();
         window.addEventListener('keydown', this.handleLightboxKeydown);
+        window.addEventListener('resize', this.checkMobile);
     },
     beforeUnmount() {
         window.removeEventListener('keydown', this.handleLightboxKeydown);
+        window.removeEventListener('resize', this.checkMobile);
     }
 };
 </script>
@@ -4150,32 +4162,14 @@ engines() { return this.listing?.metadata?.engines || null; },
         margin-bottom: 24px;
       }
 
-      .ls-key-features-slider {
-        display: flex;
+      .ls-key-features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 24px;
-        overflow-x: auto;
-        padding-bottom: 16px;
-        scroll-snap-type: x mandatory;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .ls-key-features-slider::-webkit-scrollbar {
-        height: 8px;
-      }
-
-      .ls-key-features-slider::-webkit-scrollbar-track {
-        background: #f0f0f0;
-        border-radius: 4px;
-      }
-
-      .ls-key-features-slider::-webkit-scrollbar-thumb {
-        background: #355a32;
-        border-radius: 4px;
+        padding-bottom: 0;
       }
 
       .ls-key-feature-card {
-        flex: 0 0 300px;
-        scroll-snap-align: start;
         background: #ffffff;
         border-radius: 16px;
         overflow: hidden;
@@ -4220,6 +4214,24 @@ engines() { return this.listing?.metadata?.engines || null; },
         font-size: 0.9rem;
         color: #5f6d60;
         line-height: 1.6;
+      }
+
+      .mobile-book-now {
+        margin-bottom: -25px;
+        text-align: center !important;
+        margin-top: 20px;
+        margin-left: 27px;
+      }
+
+      .mobile-book-now .ls-btn-primary {
+        width: 100%;
+        max-width: 300px;
+      }
+
+      @media (max-width: 768px) {
+        .ls-key-features-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       /* Below-features sections: mobile only */
