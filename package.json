@@ -11,6 +11,7 @@
     "sitemap": "node -e \"import('./vite-plugin-sitemap.js').then(m => m.generateSitemap(process.cwd()))\""
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "flatpickr": "^4.6.13",

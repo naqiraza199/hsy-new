@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
+import compression from 'compression';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +12,8 @@ const BLOGS_PATH = path.join(process.cwd(), 'public', 'data', 'blogs.json');
 const EVENTS_PATH = path.join(process.cwd(), 'public', 'data', 'events.json');
 const YACHT_MLS_PATH = path.join(process.cwd(), 'public', 'data', 'yacht-mls.json');
 const ITINERARIES_PATH = path.join(process.cwd(), 'public', 'data', 'itineraries.json');
+
+app.use(compression());
 
 app.use(cors({
   origin: '*',
@@ -442,7 +445,15 @@ app.get('/api/itineraries', (req, res) => {
 
 const DIST_PATH = path.join(process.cwd(), 'dist');
 
-app.use(express.static(DIST_PATH));
+app.use(express.static(DIST_PATH, {
+  maxAge: '1y',
+  etag: true,
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.json')) {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+    }
+  }
+}));
 
 app.use((req, res) => {
   res.sendFile(path.join(DIST_PATH, 'index.html'));

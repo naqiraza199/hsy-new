@@ -7,5 +7,16 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5174
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) {
+            return 'vendor';
+          }
+        }
+      }
+    }
   }
 })

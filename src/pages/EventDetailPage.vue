@@ -172,8 +172,6 @@
 <script>
 import FooterSection from '../components/FooterSection.vue';
 import NavbarSection from '../components/NavbarSection.vue';
-import eventsData from '../../events.json';
-import listingsData from '../../listings.json';
 import { useRoute } from 'vue-router';
 
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
@@ -218,27 +216,26 @@ const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object
             formatLength(length) {
                 return length ? `${length} ft` : 'N/A';
             },
-            loadEventListings() {
-                if (this.event && this.event.metadata && this.event.metadata.section4 && this.event.metadata.section4.listing_ids) {
-                    const listingIds = this.event.metadata.section4.listing_ids;
-                    let allListings = [];
-                    
-                    if (listingsData) {
-                        if (Array.isArray(listingsData) && listingsData.length > 0) {
-                            const firstItem = listingsData[0];
-                            if (firstItem && firstItem.records && Array.isArray(firstItem.records)) {
-                                allListings = firstItem.records;
-                            } else if (Array.isArray(listingsData)) {
-                                allListings = listingsData;
-                            }
-                        } else if (listingsData.records && Array.isArray(listingsData.records)) {
-                            allListings = listingsData.records;
-                        }
+            async loadEventListings() {
+                if (!this.event?.metadata?.section4?.listing_ids) return;
+                const listingIds = this.event.metadata.section4.listing_ids;
+                let allListings = [];
+                try {
+                    const resp = await fetch('/data/listings.json');
+                    const listingsData = await resp.json();
+                    if (Array.isArray(listingsData) && listingsData.length > 0) {
+                        const firstItem = listingsData[0];
+                        allListings = firstItem?.records || listingsData;
+                    } else if (listingsData?.records) {
+                        allListings = listingsData.records;
                     }
-                    
-                    const filteredListings = allListings.filter(listing => listingIds.includes(listing.id));
-                    
-                    this.eventListings = filteredListings.map(listing => ({
+                } catch (e) {
+                    console.error('Error loading listings:', e);
+                }
+
+                this.eventListings = allListings
+                    .filter(listing => listingIds.includes(listing.id))
+                    .map(listing => ({
                         id: listing.id,
                         yachtName: listing.yacht_name,
                         year: listing.year,
@@ -250,17 +247,23 @@ const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object
                         city: listing.metadata?.city || '',
                         price: listing.metadata?.price || 0,
                         photos: listing.metadata?.photos || [],
-                        slug: listing.slug || ''
+                        slug: listing.slug || '',
+                        type: listing.type || ''
                     }));
-                }
             }
         },
-        mounted() {
+        async mounted() {
             const route = useRoute();
             const eventId = route.params.id;
-            const allEvents = eventsData[0].records;
-            this.event = allEvents.find(e => e.id === eventId);
-            this.loadEventListings();
+            try {
+                const resp = await fetch('/data/events.json');
+                const eventsData = await resp.json();
+                const allEvents = eventsData[0]?.records || [];
+                this.event = allEvents.find(e => e.id === eventId) || null;
+            } catch (e) {
+                console.error('Error loading events:', e);
+            }
+            await this.loadEventListings();
         }
     }
 </script>

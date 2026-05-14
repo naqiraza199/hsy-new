@@ -593,6 +593,70 @@
                    </div>
                   </div>
 
+                  <!-- Charter Rate Section (after key features) -->
+                  <div class="ls-below-features-rates" v-if="listing.type === 'daycharter' || listing.type === 'termcharter'">
+                    <h3 class="ls-section-subtitle"><i class="fas fa-tag"></i> Charter Rates</h3>
+                    <div class="ls-rates-table">
+                      <!-- Day Charter -->
+                      <template v-if="listing.type === 'daycharter'">
+                        <div class="ls-rate-row" v-if="listing.metadata?.pricing?.retail?.four_hour">
+                          <span class="ls-rate-label">4 Hours</span>
+                          <span class="ls-rate-value">{{ formatCurrency(listing.metadata.pricing.retail.four_hour) }}</span>
+                        </div>
+                        <div class="ls-rate-row" v-if="listing.metadata?.pricing?.retail?.six_hour">
+                          <span class="ls-rate-label">6 Hours</span>
+                          <span class="ls-rate-value">{{ formatCurrency(listing.metadata.pricing.retail.six_hour) }}</span>
+                        </div>
+                        <div class="ls-rate-row" v-if="listing.metadata?.pricing?.retail?.eight_hour">
+                          <span class="ls-rate-label">8 Hours</span>
+                          <span class="ls-rate-value">{{ formatCurrency(listing.metadata.pricing.retail.eight_hour) }}</span>
+                        </div>
+                      </template>
+                      <!-- Term Charter -->
+                      <template v-if="listing.type === 'termcharter'">
+                        <div class="ls-rate-row" v-for="(value, key) in listing.metadata?.pricing?.retail" :key="key">
+                          <span class="ls-rate-label">{{ formatPricingKey(key) }}</span>
+                          <span class="ls-rate-value">{{ formatCurrency(value) }}</span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+
+                  <!-- Broker Detail Section (after key features) -->
+                  <div class="ls-below-features-broker">
+                    <h3 class="ls-section-subtitle"><i class="fas fa-user-tie"></i> Your Broker</h3>
+                    <div class="ls-below-broker-card">
+                      <div class="ls-below-broker-left">
+                        <img :src="listingBroker ? getBrokerImage() : '/images/favicon.png'" :alt="listingBroker ? listingBroker.name : 'High Seas Yachting'" class="ls-below-broker-avatar">
+                        <div class="ls-below-broker-info">
+                          <h4>{{ listingBroker ? listingBroker.name : 'High Seas Yachting' }}</h4>
+                          <span>{{ listingBroker ? (listingBroker.specialization || 'Professional Yacht Broker') : 'Professional Yacht Brokers' }}</span>
+                        </div>
+                      </div>
+                      <div class="ls-below-broker-contacts">
+                        <a :href="listingBroker ? 'tel:+1' + getBrokerPhone() : 'tel:+19546861671'" class="ls-contact-item">
+                          <i class="fas fa-phone"></i>
+                          {{ listingBroker ? (listingBroker.phone || '+1(954)686-1671') : '+1(954)686-1671' }}
+                        </a>
+                        <a :href="listingBroker ? 'mailto:' + listingBroker.email : 'mailto:Sales@highseasyachting.com'" class="ls-contact-item">
+                          <i class="fas fa-envelope"></i>
+                          {{ listingBroker ? listingBroker.email : 'Sales@highseasyachting.com' }}
+                        </a>
+                      </div>
+                      <div class="ls-action-buttons" style="margin-top:0">
+                        <button v-if="listing.type === 'daycharter' || listing.type === 'termcharter'" @click="handleBookNow" class="ls-btn-primary">
+                          <i class="fas fa-calendar-check"></i> Book Now
+                        </button>
+                        <button v-if="listing.type === 'forsale'" @click="openBoatInquiryModal(false)" class="ls-btn-primary">
+                          <i class="fas fa-envelope"></i> Inquiry Now
+                        </button>
+                        <a :href="'tel:' + contactPhoneNumber" class="ls-btn-secondary">
+                          <i class="fas fa-phone"></i> Call Now
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="ls-action-buttons" style="margin-top: 70px;">
                      <button v-if="listing.type === 'daycharter' || listing.type === 'termcharter'" @click="handleBookNow" class="ls-btn-primary">
                    <i class="fas fa-calendar-check"></i> Book Now
@@ -679,10 +743,6 @@
 
              <!-- Stats row -->
              <div class="ls-itin-row-stats">
-               <div class="ls-itin-stat">
-                 <i class="fas fa-clock"></i>
-                 <span>Full Day</span>
-               </div>
                <div class="ls-itin-stat">
                  <i class="fas fa-users"></i>
                  <span>{{ itinerary.min_guests }}–{{ itinerary.max_guests }} guests</span>
@@ -4160,6 +4220,96 @@ engines() { return this.listing?.metadata?.engines || null; },
         font-size: 0.9rem;
         color: #5f6d60;
         line-height: 1.6;
+      }
+
+      /* Below-features sections: mobile only */
+      .ls-below-features-rates,
+      .ls-below-features-broker {
+        display: none;
+      }
+      @media (max-width: 1100px) {
+        .ls-below-features-rates,
+        .ls-below-features-broker {
+          display: block;
+        }
+        .ls-sidebar .ls-broker-card,
+        .ls-sidebar .ls-price-card {
+          display: none;
+        }
+      }
+
+      /* Below-features: Charter Rates */
+      .ls-below-features-rates {
+        margin-top: 48px;
+        padding: 32px;
+        background: #f8faf8;
+        border-radius: 16px;
+        border: 1px solid #e0ebe0;
+      }
+      .ls-rates-table {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-top: 16px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e0ebe0;
+      }
+      .ls-rate-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 20px;
+        background: #fff;
+        border-bottom: 1px solid #f0f4f0;
+      }
+      .ls-rate-row:last-child { border-bottom: none; }
+      .ls-rate-label { font-size: 14px; color: #5f6d60; font-weight: 500; }
+      .ls-rate-value { font-size: 15px; font-weight: 700; color: #1a3a2a; }
+
+      /* Below-features: Broker Detail */
+      .ls-below-features-broker {
+        margin-top: 40px;
+        padding: 32px;
+        background: #f8faf8;
+        border-radius: 16px;
+        border: 1px solid #e0ebe0;
+      }
+      .ls-below-broker-card {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+      .ls-below-broker-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-shrink: 0;
+      }
+      .ls-below-broker-avatar {
+        width: 72px; height: 72px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #e0ebe0;
+      }
+      .ls-below-broker-info h4 {
+        font-size: 17px; font-weight: 700;
+        color: #1a3a2a; margin: 0 0 4px;
+      }
+      .ls-below-broker-info span {
+        font-size: 13px; color: #5f6d60;
+      }
+      .ls-below-broker-contacts {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex: 1;
+      }
+      @media (max-width: 640px) {
+        .ls-below-broker-card { flex-direction: column; align-items: flex-start; gap: 20px; }
+        .ls-below-broker-contacts { flex-direction: column; }
       }
 
       /* Equipment Tab Styles */

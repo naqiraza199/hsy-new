@@ -114,8 +114,6 @@
 <script>
 import FooterSection from '../components/FooterSection.vue';
 import NavbarSection from '../components/NavbarSection.vue';
-import brokers from '../../broker.json';
-import listings from '../../listings.json';
 import { useRoute } from 'vue-router';
 
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
@@ -133,58 +131,53 @@ export default {
             activeTab: 'forsale'
         };
     },
-    mounted() {
-        this.loadBroker();
-        this.loadListings();
+    async mounted() {
+        await this.loadBroker();
+        await this.loadListings();
     },
     methods: {
-        loadBroker() {
+        async loadBroker() {
             const route = useRoute();
             const brokerSlug = route.params.id;
-            
+
             let allBrokers = [];
-            
-            if (Array.isArray(brokers) && brokers.length > 0) {
-                const brokerData = brokers.find(b => b.data_type === 'brokers' || b.records);
-                if (brokerData && brokerData.records) {
-                    allBrokers = brokerData.records;
-                } else {
-                    allBrokers = brokers;
+            try {
+                const resp = await fetch('/data/broker.json');
+                const brokers = await resp.json();
+                if (Array.isArray(brokers) && brokers.length > 0) {
+                    const brokerData = brokers.find(b => b.data_type === 'brokers' || b.records);
+                    allBrokers = brokerData?.records || brokers;
                 }
+            } catch (e) {
+                console.error('Error loading brokers:', e);
             }
-            
-            // Extract name from slug (format: "Name-high-seas-yachting")
+
             let extractedName = brokerSlug;
             if (brokerSlug.includes('-high-seas-yachting')) {
                 extractedName = brokerSlug.replace('-high-seas-yachting', '');
             }
-            
-            // Find broker by matching the name (case-insensitive)
-            this.broker = allBrokers.find(b => 
+
+            this.broker = allBrokers.find(b =>
                 b.name && b.name.toLowerCase() === extractedName.toLowerCase()
-            ) || null;
-            
-            if (!this.broker && allBrokers.length > 0) {
-                this.broker = allBrokers[0];
-            }
+            ) || allBrokers[0] || null;
         },
-        loadListings() {
+        async loadListings() {
             if (!this.broker) return;
-            
+
             let allListings = [];
-            
-            if (Array.isArray(listings) && listings.length > 0) {
-                const listingData = listings.find(l => l.data_type === 'listings' || l.records);
-                if (listingData && listingData.records) {
-                    allListings = listingData.records;
-                } else {
-                    allListings = listings;
+            try {
+                const resp = await fetch('/data/listings.json');
+                const listings = await resp.json();
+                if (Array.isArray(listings) && listings.length > 0) {
+                    const listingData = listings.find(l => l.data_type === 'listings' || l.records);
+                    allListings = listingData?.records || listings;
                 }
+            } catch (e) {
+                console.error('Error loading listings:', e);
             }
-            
+
             this.brokerListings = allListings.filter(l => l.broker_id === this.broker.id);
-            
-            // Set initial active tab to first available listing type
+
             const types = ['forsale', 'daycharter', 'termcharter'];
             for (const type of types) {
                 if (this.brokerListings.some(l => l.type === type)) {

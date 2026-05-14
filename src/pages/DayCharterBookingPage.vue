@@ -206,11 +206,6 @@
 <script>
 import FooterSection from '../components/FooterSection.vue';
 import NavbarSection from '../components/NavbarSection.vue';
-import listingsDataRaw from '../../listings.json';
-import brokersDataRaw from '../../broker.json';
-
-const listingsData = Array.isArray(listingsDataRaw) ? listingsDataRaw : [listingsDataRaw];
-const brokersData = Array.isArray(brokersDataRaw) ? brokersDataRaw : [brokersDataRaw];
 
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
 const SUPABASE_ANON_KEY = 'a383d7d4-73ac-48a0-9312-ef4e82485ed9:6facdc70-afed-4677-863f-9387aa7f176a';
@@ -420,8 +415,14 @@ export default {
                 }
 
                 let records = [];
-                if (listingsData.length > 0 && listingsData[0].records) {
-                    records = listingsData[0].records;
+                try {
+                    const resp = await fetch('/data/listings.json');
+                    const listingsData = await resp.json();
+                    if (Array.isArray(listingsData) && listingsData.length > 0 && listingsData[0].records) {
+                        records = listingsData[0].records;
+                    }
+                } catch (e) {
+                    console.error('Error loading listings:', e);
                 }
 
                 this.listing = records.find(item => item.slug === slug);

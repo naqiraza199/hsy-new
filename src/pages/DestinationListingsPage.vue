@@ -94,9 +94,7 @@
 <script>
 import FooterSection from '../components/FooterSection.vue';
 import NavbarSection from '../components/NavbarSection.vue';
-import listingsDataRaw from '../../listings.json';
 
-const listingsData = Array.isArray(listingsDataRaw) ? listingsDataRaw : [listingsDataRaw];
 const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object/public/listings/';
 
 export default {
@@ -120,35 +118,38 @@ export default {
     watch: {
         '$route.params.id': {
             immediate: true,
-            handler(newId) {
+            async handler(newId) {
                 this.regionId = newId;
-                this.processListings();
+                await this.processListings();
             }
         }
     },
     methods: {
-        processListings() {
+        async processListings() {
             let records = [];
-            if (listingsData) {
+            try {
+                const resp = await fetch('/data/listings.json');
+                const listingsData = await resp.json();
                 if (Array.isArray(listingsData) && listingsData.length > 0) {
                     const firstItem = listingsData[0];
                     if (firstItem && firstItem.records && Array.isArray(firstItem.records)) {
                         records = firstItem.records;
-                    } else if (Array.isArray(listingsData)) {
+                    } else {
                         records = listingsData;
                     }
-                } else if (listingsData.records && Array.isArray(listingsData.records)) {
+                } else if (listingsData?.records) {
                     records = listingsData.records;
                 }
+            } catch (e) {
+                console.error('Error loading listings:', e);
             }
-            
+
             const regionId = this.regionId;
             this.listingsDataProcessed = records.filter(item => {
                 const listingRegionId = item.metadata?.region_id || item.region_id;
                 return item && listingRegionId === regionId;
             });
-            
-            // Set initial active tab to first available listing type
+
             const types = ['forsale', 'daycharter', 'termcharter'];
             for (const type of types) {
                 if (this.listingsDataProcessed.some(l => l.type === type)) {
