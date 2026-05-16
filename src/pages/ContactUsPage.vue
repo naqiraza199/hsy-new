@@ -124,6 +124,19 @@
               </div>
             </div>
 
+            <div class="terms-row">
+              <label class="terms-label">
+                <input type="checkbox" v-model="agreeTerms" class="terms-checkbox">
+                <span class="terms-checkmark"></span>
+                <span class="terms-text">
+                  I agree to the
+                  <router-link to="/terms-conditions" class="terms-link">Terms &amp; Conditions</router-link>
+                  and
+                  <router-link to="/privacy-policy" class="terms-link">Privacy Policy</router-link>
+                </span>
+              </label>
+            </div>
+
             <div class="form-submit">
               <button type="submit" :disabled="formLoading">
                 <span>{{ formLoading ? 'Sending...' : 'Send Message' }}</span>
@@ -256,6 +269,7 @@ import FooterSection from '../components/FooterSection.vue';
         data() {
             return {
                 formLoading: false,
+                agreeTerms: false,
                 notification: {
                     show: false,
                     message: '',
@@ -275,9 +289,14 @@ import FooterSection from '../components/FooterSection.vue';
                 }, 5000);
             },
             submitLeadForm() {
+                if (!this.agreeTerms) {
+                    this.showNotification('Please accept the Terms & Conditions and Privacy Policy to continue.', 'error');
+                    return;
+                }
+
                 const form = document.getElementById('contactForm');
                 const formData = new FormData(form);
-                
+
                 this.formLoading = true;
 
                 const data = {
@@ -305,6 +324,7 @@ import FooterSection from '../components/FooterSection.vue';
                     return res.json().then(function(result) {
                         if (res.ok && result.success) {
                             form.reset();
+                            self.agreeTerms = false;
                             self.showNotification('Thank you! Your information has been submitted successfully. We will get back to you soon!', 'success');
                         } else {
                             self.showNotification(result.error || 'Something went wrong. Please try again.', 'error');
@@ -654,6 +674,77 @@ import FooterSection from '../components/FooterSection.vue';
     .form-field textarea {
       min-height: 120px;
       resize: vertical;
+    }
+
+    .terms-row {
+      margin-bottom: 18px;
+    }
+
+    .terms-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .terms-checkbox {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .terms-checkmark {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #c8d4c6;
+      border-radius: 6px;
+      background: #fafafa;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    .terms-label:hover .terms-checkmark {
+      border-color: #2d5a45;
+    }
+
+    .terms-checkbox:checked + .terms-checkmark {
+      background: linear-gradient(135deg, #1a3a2a, #2d5a45);
+      border-color: #1a3a2a;
+    }
+
+    .terms-checkbox:checked + .terms-checkmark::after {
+      content: '';
+      display: block;
+      width: 5px;
+      height: 9px;
+      border: 2px solid white;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg) translateY(-1px);
+    }
+
+    .terms-text {
+      font-size: 0.88rem;
+      color: #4a5e47;
+      line-height: 1.5;
+    }
+
+    .terms-link {
+      color: #1a3a2a;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color 0.2s ease;
+    }
+
+    .terms-link:hover {
+      color: #2d5a45;
     }
 
     .form-submit {

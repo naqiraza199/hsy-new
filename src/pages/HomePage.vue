@@ -348,28 +348,28 @@
                             <div class="hs-form-row">
                                 <div class="hs-form-group">
                                     <label>First Name <span>*</span></label>
-                                    <input type="text" name="first_name" placeholder="First Name" required maxlength="100">
+                                    <input type="text" v-model="contactForm.first_name" name="first_name" placeholder="First Name" required maxlength="100">
                                 </div>
                                 <div class="hs-form-group">
                                     <label>Last Name <span>*</span></label>
-                                    <input type="text" name="last_name" placeholder="Last Name" required maxlength="100">
+                                    <input type="text" v-model="contactForm.last_name" name="last_name" placeholder="Last Name" required maxlength="100">
                                 </div>
                             </div>
 
                             <div class="hs-form-row">
                                 <div class="hs-form-group">
                                     <label>Email <span>*</span></label>
-                                    <input type="email" name="email" placeholder="your@email.com" required maxlength="255">
+                                    <input type="email" v-model="contactForm.email" name="email" placeholder="your@email.com" required maxlength="255">
                                 </div>
                                 <div class="hs-form-group">
                                     <label>Phone</label>
-                                    <input type="tel" name="phone" placeholder="(000) 000-0000" maxlength="30">
+                                    <input type="tel" v-model="contactForm.phone" name="phone" placeholder="(000) 000-0000" maxlength="30">
                                 </div>
                             </div>
 
                             <div class="hs-form-group">
                                 <label>Interest <span>*</span></label>
-                                <select name="interest_type" required>
+                                <select v-model="contactForm.interest_type" name="interest_type" required>
                                     <option value="">Select Interest</option>
                                     <option value="Buy">Buy</option>
                                     <option value="Sell">Sell</option>
@@ -383,21 +383,38 @@
                             <div class="hs-form-row">
                                 <div class="hs-form-group">
                                     <label>City</label>
-                                    <input type="text" name="city" placeholder="Your City" maxlength="100">
+                                    <input type="text" v-model="contactForm.city" name="city" placeholder="Your City" maxlength="100">
                                 </div>
                                 <div class="hs-form-group">
                                     <label>Budget</label>
-                                    <input type="text" name="budget" placeholder="e.g. $500,000" maxlength="50">
+                                    <input type="text" v-model="contactForm.budget" name="budget" placeholder="e.g. $500,000" maxlength="50">
                                 </div>
                             </div>
 
                             <div class="hs-form-group">
                                 <label>Message</label>
-                                <textarea name="special_notes" placeholder="Message / Special Notes" rows="4" maxlength="1000"></textarea>
+                                <textarea v-model="contactForm.special_notes" name="special_notes" placeholder="Message / Special Notes" rows="4" maxlength="1000"></textarea>
+                            </div>
+
+                            <div class="hs-terms-row">
+                                <label class="hs-terms-label">
+                                    <input
+                                        type="checkbox"
+                                        v-model="agreeTerms"
+                                        class="hs-terms-checkbox"
+                                    >
+                                    <span class="hs-terms-checkmark"></span>
+                                    <span class="hs-terms-text">
+                                        I agree to the
+                                        <router-link to="/terms-conditions" class="hs-terms-link">Terms &amp; Conditions</router-link>
+                                        and
+                                        <router-link to="/privacy-policy" class="hs-terms-link">Privacy Policy</router-link>
+                                    </span>
+                                </label>
                             </div>
 
                             <button type="submit" class="hs-submit-btn" :disabled="formLoading">
-                                <i class="fas" :class="formLoading ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i> 
+                                <i class="fas" :class="formLoading ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
                                 {{ formLoading ? 'Submitting...' : 'Submit Inquiry' }}
                             </button>
                         </form>
@@ -497,7 +514,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, reactive } from 'vue';
 import FooterSection from '../components/FooterSection.vue';
 import NavbarSection from '../components/NavbarSection.vue';
 
@@ -512,6 +529,11 @@ const blogs = ref([]);
 const loading = ref(true);
 const formLoading = ref(false);
 const formMessage = ref(null);
+const agreeTerms = ref(false);
+const contactForm = reactive({
+    first_name: '', last_name: '', email: '', phone: '',
+    interest_type: '', city: '', budget: '', special_notes: ''
+});
 const destinationCounts = ref({});
 const notification = ref({
     show: false,
@@ -668,37 +690,43 @@ function showNotification(message, type = 'success') {
 }
 
 async function submitLeadForm() {
-    const form = document.getElementById('hsContactForm');
-    const formData = new FormData(form);
-    
+    if (!agreeTerms.value) {
+        showNotification('Please accept the Terms & Conditions and Privacy Policy to continue.', 'error');
+        return;
+    }
+
     formLoading.value = true;
     formMessage.value = null;
 
     const data = {
-        first_name: formData.get('first_name')?.trim() || '',
-        last_name: formData.get('last_name')?.trim() || '',
-        email: formData.get('email')?.trim() || '',
-        phone: formData.get('phone')?.trim() || '',
-        interest_type: formData.get('interest_type') || '',
-        city: formData.get('city')?.trim() || '',
-        budget: formData.get('budget')?.trim() || '',
-        special_notes: formData.get('special_notes')?.trim() || '',
+        first_name: contactForm.first_name.trim(),
+        last_name: contactForm.last_name.trim(),
+        email: contactForm.email.trim(),
+        phone: contactForm.phone.trim(),
+        interest_type: contactForm.interest_type,
+        city: contactForm.city.trim(),
+        budget: contactForm.budget.trim(),
+        special_notes: contactForm.special_notes.trim(),
+        broker_id: '2aeecdcd-d901-4187-8e63-d4ce079a4d1b'
     };
-    data.broker_id = '2aeecdcd-d901-4187-8e63-d4ce079a4d1b';
 
     try {
         const res = await fetch('https://qumgjqbfreeskjgltfvu.supabase.co/functions/v1/external-lead-api', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'x-api-token': 'd0aabf8c1b2b75756f86e27ed1cd06ef7f05e7f0e91273e945849b5339965fcd' 
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-token': 'd0aabf8c1b2b75756f86e27ed1cd06ef7f05e7f0e91273e945849b5339965fcd'
             },
             body: JSON.stringify(data),
         });
         const result = await res.json();
         if (res.ok && result.success) {
             showNotification('Thank you! Your information has been submitted successfully. We will get back to you soon!', 'success');
-            form.reset();
+            Object.assign(contactForm, {
+                first_name: '', last_name: '', email: '', phone: '',
+                interest_type: '', city: '', budget: '', special_notes: ''
+            });
+            agreeTerms.value = false;
         } else {
             showNotification(result.error || 'Something went wrong. Please try again.', 'error');
         }
@@ -2716,6 +2744,78 @@ onMounted(() => {
             opacity: 0.7;
             cursor: not-allowed;
             transform: none;
+        }
+
+        /* Terms checkbox row */
+        .hs-terms-row {
+            margin-bottom: 18px;
+        }
+
+        .hs-terms-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .hs-terms-checkbox {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .hs-terms-checkmark {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #c8d4c6;
+            border-radius: 6px;
+            background: #fafafa;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1px;
+        }
+
+        .hs-terms-label:hover .hs-terms-checkmark {
+            border-color: #416B3C;
+        }
+
+        .hs-terms-checkbox:checked + .hs-terms-checkmark {
+            background: #416B3C;
+            border-color: #416B3C;
+        }
+
+        .hs-terms-checkbox:checked + .hs-terms-checkmark::after {
+            content: '';
+            display: block;
+            width: 5px;
+            height: 9px;
+            border: 2px solid white;
+            border-top: none;
+            border-left: none;
+            transform: rotate(45deg) translateY(-1px);
+        }
+
+        .hs-terms-text {
+            font-size: 0.88rem;
+            color: #4a5e47;
+            line-height: 1.5;
+        }
+
+        .hs-terms-link {
+            color: #416B3C;
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.2s ease;
+        }
+
+        .hs-terms-link:hover {
+            color: #2d5a45;
         }
 
         .hs-form-message {
