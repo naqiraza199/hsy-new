@@ -405,7 +405,7 @@ const SUPABASE_URL = 'https://qumgjqbfreeskjgltfvu.supabase.co/storage/v1/object
                     const data = await fetch('/data/listings.json').then(r => r.json());
                     const records = data[0]?.records || data;
                     this.termcharterListings = records
-                        .filter(item => item && item.type === 'termcharter')
+                        .filter(item => item && item.type === 'termcharter' && item.is_published !== false)
                         .map(listing => ({
                             id: listing.id,
                             yachtName: listing.yacht_name,

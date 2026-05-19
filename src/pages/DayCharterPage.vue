@@ -128,7 +128,7 @@ export default {
                 const records = listingsData[0]?.records || listingsData;
 
                 const allDaycharters = records
-                    .filter(item => item && item.type === 'daycharter')
+                    .filter(item => item && item.type === 'daycharter' && item.is_published !== false)
                     .map(listing => ({
                         id: listing.id,
                         yachtName: listing.yacht_name,

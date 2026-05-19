@@ -1231,9 +1231,10 @@ engines() { return this.listing?.metadata?.engines || null; },
              const currentType = this.listing?.type || '';
              
              return records
-                 .filter(item => 
+                 .filter(item =>
                      item.id !== this.listing.id &&
                      item.type === currentType &&
+                     item.is_published !== false &&
                      ((item.metadata?.city && item.metadata.city.toLowerCase() === currentCity.toLowerCase()) ||
                       (item.city && item.city.toLowerCase() === currentCity.toLowerCase()))
                  )

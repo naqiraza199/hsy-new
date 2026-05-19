@@ -147,7 +147,7 @@ export default {
             const regionId = this.regionId;
             this.listingsDataProcessed = records.filter(item => {
                 const listingRegionId = item.metadata?.region_id || item.region_id;
-                return item && listingRegionId === regionId;
+                return item && listingRegionId === regionId && item.is_published !== false;
             });
 
             const types = ['forsale', 'daycharter', 'termcharter'];

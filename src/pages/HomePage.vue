@@ -566,7 +566,7 @@ async function loadAllData() {
         }
 
         priorityListings.value = records
-            .filter(item => item && item.metadata?.boat_video?.enable_slider === true)
+            .filter(item => item && item.is_published !== false && item.metadata?.boat_video?.enable_slider === true)
             .map(listing => ({
                 id: listing.id,
                 yachtName: listing.yacht_name,
@@ -604,7 +604,7 @@ async function loadAllData() {
 
 function loadFeaturedListings(records) {
     featuredListings.value = records
-        .filter(item => item && item.type === 'forsale' && item.sale_status !== 'sold')
+        .filter(item => item && item.type === 'forsale' && item.sale_status !== 'sold' && item.is_published !== false)
         .slice(0, 6)
         .map(listing => ({
             id: listing.id,

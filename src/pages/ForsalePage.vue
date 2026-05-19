@@ -427,7 +427,7 @@ export default {
         if (listingsResult.status === 'fulfilled') {
           const records = listingsResult.value[0]?.records || listingsResult.value;
           forsaleListings = records
-            .filter(item => item && item.type === 'forsale')
+            .filter(item => item && item.type === 'forsale' && item.is_published !== false)
             .map(l => this.processListing(l, 'listings', 0));
         } else {
           console.error('Error loading listings.json:', listingsResult.reason);
